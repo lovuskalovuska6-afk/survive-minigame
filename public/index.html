@@ -13,32 +13,27 @@
 </head>
 <body>
 
-  <!-- Требование горизонтального экрана -->
+  <!-- Поворот экрана -->
   <div id="orientationScreen">
     <div class="orientation-card">
       <div class="rotate-phone">📱</div>
       <h1>Поверни телефон</h1>
       <p>Игра предназначена для горизонтального экрана.</p>
-      <button id="orientationContinueButton" type="button">
-        Продолжить
-      </button>
-      <p class="small-note">
-        Если автоматический поворот отключён, включи его в настройках телефона.
-      </p>
+      <button id="orientationContinueButton" type="button">Продолжить</button>
+      <p class="small-note">Если поворот отключён, включи его в настройках телефона.</p>
     </div>
   </div>
 
   <!-- Главное меню -->
   <main id="mainMenu">
     <div class="menu-background"></div>
-
     <section class="menu-card">
       <div class="game-logo">THE LOCKED HOME</div>
       <div class="game-subtitle">30 DAYS TO SURVIVE</div>
 
       <div class="menu-story">
-        Ты оказался в незнакомом месте. До помощи ещё далеко.
-        Исследуй окрестности, добывай ресурсы и продержись 30 дней.
+        Ты оказался в незнакомом месте. Исследуй окрестности,
+        собирай припасы и продержись 30 дней.
       </div>
 
       <label for="playerName">Имя игрока</label>
@@ -52,12 +47,8 @@
         <button id="continueGameButton" type="button" disabled>
           ПРОДОЛЖИТЬ
         </button>
-        <button id="openMainSettingsButton" type="button">
-          НАСТРОЙКИ
-        </button>
-        <button id="menuPlayersButton" type="button">
-          ИГРОКИ И МУЛЬТИПЛЕЕР
-        </button>
+        <button id="openMainSettingsButton" type="button">НАСТРОЙКИ</button>
+        <button id="menuPlayersButton" type="button">ИГРОКИ И МУЛЬТИПЛЕЕР</button>
       </div>
 
       <div class="menu-footer">
@@ -67,11 +58,78 @@
     </section>
   </main>
 
+  <!-- ЛОББИ -->
+  <main id="lobbyScreen" class="hidden">
+    <section class="lobby-card">
+      <div class="game-logo">THE LOCKED HOME</div>
+      <h1>Лобби выживания</h1>
+      <p>Выбери режим. Игра начнётся после подготовки.</p>
+
+      <label for="lobbyPlayerName">Имя игрока</label>
+      <input id="lobbyPlayerName" maxlength="20"
+             autocomplete="nickname" placeholder="Выживший">
+
+      <div class="lobby-mode-buttons">
+        <button id="singlePlayerButton" class="primary-button" type="button">
+          ОДИНОЧНАЯ ИГРА
+        </button>
+        <button id="createRoomButton" type="button">
+          ИГРАТЬ С ДРУГОМ
+        </button>
+      </div>
+
+      <section id="roomSection" class="hidden">
+        <h2>Комната</h2>
+        <div class="room-code-row">
+          <span>Код комнаты:</span>
+          <strong id="roomCode">------</strong>
+          <button id="copyRoomCodeButton" type="button">Копировать</button>
+        </div>
+
+        <label for="joinRoomCode">Или введи код друга</label>
+        <input id="joinRoomCode" maxlength="12"
+               autocomplete="off" placeholder="Код комнаты">
+
+        <button id="joinRoomButton" type="button">ПРИСОЕДИНИТЬСЯ</button>
+
+        <div id="lobbyPlayerList" aria-live="polite">
+          <p>Ожидание подключения...</p>
+        </div>
+
+        <div id="lobbyStatus" role="status">
+          Создай комнату или присоединись к другу.
+        </div>
+
+        <label for="timeScaleSelect">Длительность игровой минуты</label>
+        <select id="timeScaleSelect">
+          <option value="0.25">0,25 реальной секунды</option>
+          <option value="0.5">0,5 реальной секунды</option>
+          <option value="1" selected>1 реальная секунда</option>
+          <option value="2">2 реальные секунды</option>
+          <option value="5">5 реальных секунд</option>
+          <option value="10">10 реальных секунд</option>
+          <option value="30">30 реальных секунд</option>
+          <option value="60">60 реальных секунд</option>
+        </select>
+
+        <p class="small-note">
+          В сетевой игре скорость времени устанавливается для всей комнаты.
+          Её выбирает создатель комнаты.
+        </p>
+
+        <button id="lobbyStartButton" class="primary-button" type="button" disabled>
+          НАЧАТЬ ВЫЖИВАНИЕ
+        </button>
+      </section>
+
+      <button id="lobbyBackButton" type="button">НАЗАД В МЕНЮ</button>
+    </section>
+  </main>
+
   <!-- Игровой экран -->
   <main id="gameScreen" class="hidden">
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Верхняя панель -->
     <header id="topBar">
       <div class="top-info">
         <span id="dayNumber">День 1/30</span>
@@ -79,7 +137,9 @@
         <span id="connectionStatus">Офлайн</span>
       </div>
       <div class="top-buttons">
-        <button id="playersButton" type="button">👥 <span id="playerCount">1</span></button>
+        <button id="playersButton" type="button">
+          👥 <span id="playerCount">1</span>
+        </button>
         <button id="pauseButton" type="button">Ⅱ</button>
       </div>
     </header>
@@ -109,7 +169,6 @@
       <div id="moneyValue">💰 50</div>
     </section>
 
-    <!-- Задача и локация -->
     <section id="objectivePanel">
       <div id="locationName">Тихий посёлок</div>
       <div id="objectiveText">Исследуй дом и найди припасы</div>
@@ -118,62 +177,46 @@
     <div id="crosshair" aria-hidden="true"></div>
     <div id="notification" class="hidden" role="status"></div>
 
-    <!-- Взаимодействие -->
+    <!-- Целевой предмет -->
     <section id="targetPanel" class="hidden">
       <div id="targetName">Предмет</div>
       <div id="targetDescription">Описание предмета</div>
       <button id="interactButton" type="button">ВЗАИМОДЕЙСТВОВАТЬ</button>
     </section>
 
-    <!-- Горячая панель -->
+    <!-- Быстрые слоты -->
     <section id="hotbar" aria-label="Быстрые слоты">
       <button class="inventory-slot selected" data-slot="0" type="button">
-        <span class="slot-number">1</span>
-        <span class="slot-icon"></span>
-        <span class="slot-name"></span>
-        <span class="slot-count"></span>
+        <span class="slot-number">1</span><span class="slot-icon"></span>
+        <span class="slot-name"></span><span class="slot-count"></span>
       </button>
       <button class="inventory-slot" data-slot="1" type="button">
-        <span class="slot-number">2</span>
-        <span class="slot-icon"></span>
-        <span class="slot-name"></span>
-        <span class="slot-count"></span>
+        <span class="slot-number">2</span><span class="slot-icon"></span>
+        <span class="slot-name"></span><span class="slot-count"></span>
       </button>
       <button class="inventory-slot" data-slot="2" type="button">
-        <span class="slot-number">3</span>
-        <span class="slot-icon"></span>
-        <span class="slot-name"></span>
-        <span class="slot-count"></span>
+        <span class="slot-number">3</span><span class="slot-icon"></span>
+        <span class="slot-name"></span><span class="slot-count"></span>
       </button>
       <button class="inventory-slot" data-slot="3" type="button">
-        <span class="slot-number">4</span>
-        <span class="slot-icon"></span>
-        <span class="slot-name"></span>
-        <span class="slot-count"></span>
+        <span class="slot-number">4</span><span class="slot-icon"></span>
+        <span class="slot-name"></span><span class="slot-count"></span>
       </button>
       <button class="inventory-slot" data-slot="4" type="button">
-        <span class="slot-number">5</span>
-        <span class="slot-icon"></span>
-        <span class="slot-name"></span>
-        <span class="slot-count"></span>
+        <span class="slot-number">5</span><span class="slot-icon"></span>
+        <span class="slot-name"></span><span class="slot-count"></span>
       </button>
       <button class="inventory-slot" data-slot="5" type="button">
-        <span class="slot-number">6</span>
-        <span class="slot-icon"></span>
-        <span class="slot-name"></span>
-        <span class="slot-count"></span>
+        <span class="slot-number">6</span><span class="slot-icon"></span>
+        <span class="slot-name"></span><span class="slot-count"></span>
       </button>
       <button class="inventory-slot" data-slot="6" type="button">
-        <span class="slot-number">7</span>
-        <span class="slot-icon"></span>
-        <span class="slot-name"></span>
-        <span class="slot-count"></span>
+        <span class="slot-number">7</span><span class="slot-icon"></span>
+        <span class="slot-name"></span><span class="slot-count"></span>
       </button>
       <button class="inventory-slot" data-slot="7" type="button">
-        <span class="slot-number">8</span>
-        <span class="slot-icon"></span>
-        <span class="slot-name"></span>
-        <span class="slot-count"></span>
+        <span class="slot-number">8</span><span class="slot-icon"></span>
+        <span class="slot-name"></span><span class="slot-count"></span>
       </button>
     </section>
 
@@ -190,7 +233,7 @@
       </div>
     </section>
 
-    <!-- Боковые действия для компьютера -->
+    <!-- Нижняя панель действий -->
     <section id="actionButtons">
       <button id="openInventoryButton" type="button">🎒 Инвентарь</button>
       <button id="openCraftingButton" type="button">🛠️ Крафт</button>
@@ -199,37 +242,39 @@
       <button id="saveGameButton" type="button">💾 Сохранить</button>
     </section>
 
-    <!-- Чат -->
+    <!-- Чат, который можно сворачивать -->
     <section id="chatPanel">
       <div id="chatHeader">
         <span>Чат игроков</span>
-        <button id="toggleChatButton" type="button" aria-label="Свернуть чат">−</button>
+        <button id="toggleChatButton" type="button"
+                aria-label="Свернуть чат" aria-expanded="true">−</button>
       </div>
-      <div id="chatMessages" aria-live="polite"></div>
-      <form id="chatForm">
-        <input id="chatInput" maxlength="180"
-               placeholder="Сообщение..." autocomplete="off">
-        <button type="submit">➤</button>
-      </form>
+      <div id="chatBody">
+        <div id="chatMessages" aria-live="polite"></div>
+        <form id="chatForm">
+          <input id="chatInput" maxlength="180"
+                 placeholder="Сообщение..." autocomplete="off">
+          <button type="submit" aria-label="Отправить сообщение">➤</button>
+        </form>
+      </div>
     </section>
+
+    <button id="showChatButton" class="hidden" type="button">
+      💬 Чат
+    </button>
   </main>
 
   <!-- Кат-сцена -->
   <section id="cutsceneScreen" class="hidden">
     <canvas id="cutsceneCanvas"></canvas>
-
     <div class="cutscene-vignette"></div>
-
     <div id="cutsceneTop">
-      <span>THE LOCKED HOME</span>
-      <span>DAY 01</span>
+      <span>THE LOCKED HOME</span><span>DAY 01</span>
     </div>
-
     <div id="cutsceneSubtitles">
       <div id="cutsceneSpeaker">НЕИЗВЕСТНЫЙ</div>
       <div id="cutsceneText">Что это за место?..</div>
     </div>
-
     <div id="cutsceneControls">
       <div id="cutsceneProgressTrack">
         <div id="cutsceneProgress"></div>
@@ -238,13 +283,11 @@
     </div>
   </section>
 
-  <!-- Список игроков -->
+  <!-- Игроки -->
   <section id="playersPanel" class="game-panel hidden">
     <button class="panel-close" data-close-panel type="button">×</button>
     <h2>Игроки</h2>
-    <p class="panel-description">
-      Игроки, подключённые к текущей игровой сессии.
-    </p>
+    <p class="panel-description">Участники текущей игровой комнаты.</p>
     <div id="playersConnectionInfo">Подключение...</div>
     <div id="playersList"></div>
     <button id="refreshPlayersButton" type="button">Обновить список</button>
@@ -261,21 +304,32 @@
 
     <label for="graphicsQuality">Качество графики</label>
     <select id="graphicsQuality">
-      <option value="low">Низкое — для слабых телефонов</option>
+      <option value="low">Низкое</option>
       <option value="medium" selected>Среднее</option>
       <option value="high">Высокое</option>
     </select>
 
-    <label class="setting-checkbox">
-      <input id="showFPS" type="checkbox">
-      Показывать FPS
-    </label>
+    <label for="settingsTimeScale">Длительность игровой минуты</label>
+    <select id="settingsTimeScale">
+      <option value="0.25">0,25 секунды</option>
+      <option value="0.5">0,5 секунды</option>
+      <option value="1" selected>1 секунда</option>
+      <option value="2">2 секунды</option>
+      <option value="5">5 секунд</option>
+      <option value="10">10 секунд</option>
+      <option value="30">30 секунд</option>
+      <option value="60">60 секунд</option>
+    </select>
+    <p class="small-note">
+      Во время мультиплеера изменить скорость сможет только создатель комнаты.
+    </p>
 
     <label class="setting-checkbox">
-      <input id="invertCamera" type="checkbox">
-      Инвертировать вертикальный обзор
+      <input id="showFPS" type="checkbox"> Показывать FPS
     </label>
-
+    <label class="setting-checkbox">
+      <input id="invertCamera" type="checkbox"> Инвертировать вертикальный обзор
+    </label>
     <button id="applySettingsButton" type="button">Применить</button>
   </section>
 
@@ -294,7 +348,7 @@
   <section id="craftingPanel" class="game-panel hidden">
     <button class="panel-close" data-close-panel type="button">×</button>
     <h2>Создание предметов</h2>
-    <p class="panel-description">Собирай ресурсы и изготавливай снаряжение.</p>
+    <p class="panel-description">Собирай ресурсы и создавай снаряжение.</p>
     <div id="craftingItems"></div>
   </section>
 
@@ -303,19 +357,15 @@
     <button class="panel-close" data-close-panel type="button">×</button>
     <h2>Торговец</h2>
     <div id="shopMoney">Деньги: 50</div>
-    <h3>Покупка</h3>
-    <div id="shopItems"></div>
-    <h3>Продажа</h3>
-    <div id="sellItems"></div>
+    <h3>Покупка</h3><div id="shopItems"></div>
+    <h3>Продажа</h3><div id="sellItems"></div>
   </section>
 
-  <!-- Выбор города -->
+  <!-- Города -->
   <section id="cityPanel" class="game-panel hidden">
     <button class="panel-close" data-close-panel type="button">×</button>
     <h2>Переезд</h2>
-    <p class="panel-description">
-      Подготовь припасы перед путешествием.
-    </p>
+    <p class="panel-description">Подготовь припасы перед путешествием.</p>
     <div id="cityList"></div>
     <button id="travelButton" type="button">Переехать</button>
   </section>
@@ -340,7 +390,6 @@
     </div>
   </section>
 
-  <!-- FPS -->
   <div id="fpsCounter" class="hidden">FPS: 60</div>
 
   <script src="/socket.io/socket.io.js"></script>
