@@ -2021,7 +2021,34 @@ function onResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
 }
+function updateOrientationScreen() {
+  const orientationScreen = document.getElementById('orientationScreen');
+  if (!orientationScreen) return;
 
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isPortrait = window.innerHeight > window.innerWidth;
+
+  orientationScreen.classList.toggle('hidden', !(isMobile && isPortrait));
+}
+
+function setupOrientation() {
+  const button = document.getElementById('orientationContinueButton');
+
+  if (button) {
+    button.addEventListener('click', () => {
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(() => {});
+      }
+
+      updateOrientationScreen();
+    });
+  }
+
+  window.addEventListener('resize', updateOrientationScreen);
+  window.addEventListener('orientationchange', updateOrientationScreen);
+
+  updateOrientationScreen();
+     }
 /* ---------------- Кнопки ---------------- */
 
 function setupButtons() {
