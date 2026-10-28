@@ -3,100 +3,288 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <meta name="theme-color" content="#10151b">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#090d16">
   <title>THE LOCKED HOME: 14 DAYS</title>
   <link rel="stylesheet" href="/style.css">
   <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-  <div id="game"></div>
+  <div id="rotateScreen" class="rotate-screen">
+    <div class="rotate-icon">📱</div>
+    <h1>ПОВЕРНИ ТЕЛЕФОН</h1>
+    <p>Для игры нужно горизонтальное положение экрана</p>
+    <div class="rotate-animation">↻</div>
+  </div>
 
-  <section id="menu" class="screen">
-    <div class="menu-card">
-      <div class="eyebrow">SURVIVAL • 3D • MULTIPLAYER</div>
-      <h1>THE LOCKED<br><span>HOME</span></h1>
-      <p class="subtitle">14 дней до возвращения родителей</p>
+  <main id="app">
+    <header class="top-bar">
+      <div class="brand">
+        <span class="brand-icon">🏚️</span>
+        <div>
+          <strong>THE LOCKED HOME</strong>
+          <small>14 DAYS</small>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span id="connectionStatus" class="status-pill">Подключение...</span>
+        <button id="settingsButton" class="icon-button" aria-label="Настройки">⚙</button>
+      </div>
+    </header>
 
-      <label for="nickname">ТВОЙ НИКНЕЙМ</label>
-      <input id="nickname" maxlength="20" placeholder="Выбери имя" value="Выживший">
+    <section id="mainMenu" class="screen active">
+      <div class="menu-background"></div>
+      <div class="menu-content">
+        <div class="eyebrow">ИСТОРИЯ ВЫЖИВАНИЯ</div>
+        <h1 class="game-title">THE LOCKED<br><span>HOME</span></h1>
+        <p class="game-subtitle">14 дней. Один дом. Что-то не так.</p>
 
-      <button id="playButton" class="primary">ИГРАТЬ</button>
+        <div class="menu-buttons">
+          <button id="playButton" class="primary-button">ИГРАТЬ</button>
+          <button id="menuSettingsButton" class="secondary-button">НАСТРОЙКИ</button>
+        </div>
 
-      <div id="roomPicker" class="hidden">
-        <h2>Выбери комнату</h2>
-        <button class="room-button" data-room="solo1">Одиночная #1 <span>1 игрок</span></button>
-        <button class="room-button" data-room="solo2">Одиночная #2 <span>1 игрок</span></button>
-        <button class="room-button" data-room="coop1">Кооператив #1 <span>до 2 игроков</span></button>
-        <button class="room-button" data-room="coop2">Кооператив #2 <span>до 2 игроков</span></button>
-        <button id="backButton" class="secondary">НАЗАД</button>
+        <div class="menu-footer">
+          <span>ONLINE SURVIVAL</span>
+          <span>v1.0</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="lobbyScreen" class="screen">
+      <div class="section-heading">
+        <div>
+          <div class="eyebrow">МУЛЬТИПЛЕЕР</div>
+          <h2>Выбери домик</h2>
+          <p>Зайди один или пригласи второго игрока.</p>
+        </div>
+        <button id="backToMenuButton" class="secondary-button small-button">← Назад</button>
       </div>
 
-      <p id="menuStatus" class="status">Подключение к серверу…</p>
-    </div>
-  </section>
+      <div class="lobby-layout">
+        <div class="lobby-scene">
+          <div class="lobby-sky"></div>
+          <div class="lobby-moon"></div>
+          <div class="lobby-hill hill-back"></div>
+          <div class="lobby-hill hill-front"></div>
+          <div class="cabin-row">
+            <button class="cabin-card" data-room="solo1">
+              <span class="cabin-number">01</span>
+              <span class="cabin-art">🏚️</span>
+              <strong>Один игрок</strong>
+              <span class="cabin-count" id="count-solo1">0 / 1</span>
+              <span class="cabin-status">ОДИНОЧНАЯ ИГРА</span>
+            </button>
 
-  <header id="hud" class="hidden">
-    <div class="hud-title">THE LOCKED HOME</div>
-    <div class="hud-info">
-      <span id="dayLabel">День 1 / 14</span>
-      <span id="timeLabel">06:00</span>
-      <span id="roomLabel">Комната</span>
-    </div>
-    <div class="stat"><span>❤ Здоровье</span><div><i id="healthBar"></i></div></div>
-    <div class="stat"><span>🍗 Голод</span><div><i id="hungerBar"></i></div></div>
-    <div class="stat"><span>💧 Жажда</span><div><i id="thirstBar"></i></div></div>
-    <div class="stat"><span>⚡ Выносливость</span><div><i id="staminaBar"></i></div></div>
-    <button id="inventoryButton" class="small-button">🎒 Рюкзак</button>
-    <button id="shopButton" class="small-button">🛒 Торговец</button>
-    <button id="leaveButton" class="small-button">↩ В меню</button>
-  </header>
+            <button class="cabin-card" data-room="solo2">
+              <span class="cabin-number">02</span>
+              <span class="cabin-art">🏚️</span>
+              <strong>Один игрок</strong>
+              <span class="cabin-count" id="count-solo2">0 / 1</span>
+              <span class="cabin-status">ОДИНОЧНАЯ ИГРА</span>
+            </button>
 
-  <div id="hint" class="hidden">Исследуй территорию и найди вход в подвал.</div>
-  <div id="toast" class="toast hidden"></div>
+            <button class="cabin-card coop-cabin" data-room="coop1">
+              <span class="cabin-number">03</span>
+              <span class="cabin-art">🏠</span>
+              <strong>Кооператив</strong>
+              <span class="cabin-count" id="count-coop1">0 / 2</span>
+              <span class="cabin-status">2 ИГРОКА</span>
+            </button>
 
-  <section id="inventoryPanel" class="panel hidden">
-    <button class="close-panel" data-close="inventoryPanel">✕</button>
-    <h2>🎒 Инвентарь</h2>
-    <div id="inventoryList"></div>
-    <button id="eatButton" class="primary">Использовать еду</button>
-    <button id="drinkButton" class="secondary">Выпить воду</button>
-  </section>
+            <button class="cabin-card coop-cabin" data-room="coop2">
+              <span class="cabin-number">04</span>
+              <span class="cabin-art">🏠</span>
+              <strong>Кооператив</strong>
+              <span class="cabin-count" id="count-coop2">0 / 2</span>
+              <span class="cabin-status">2 ИГРОКА</span>
+            </button>
+          </div>
+          <div class="lobby-ground"></div>
+        </div>
 
-  <section id="shopPanel" class="panel hidden">
-    <button class="close-panel" data-close="shopPanel">✕</button>
-    <h2>🛒 Торговец</h2>
-    <p>Деньги: <strong id="moneyLabel">500 ₽</strong></p>
-    <div id="shopList"></div>
-  </section>
+        <aside class="lobby-sidebar">
+          <div class="panel">
+            <h3>Твой персонаж</h3>
+            <div class="avatar-preview">🧍</div>
+            <div id="playerName" class="player-name">Игрок</div>
+            <div class="online-indicator">
+              <span class="online-dot"></span>
+              <span id="onlineCount">Онлайн</span>
+            </div>
+          </div>
 
-  <section id="chatPanel" class="chat-panel hidden">
-    <div class="chat-heading">💬 Чат комнаты</div>
-    <div id="chatMessages"></div>
-    <form id="chatForm">
-      <input id="chatInput" maxlength="250" placeholder="Сообщение…">
-      <button type="submit">➤</button>
-    </form>
-  </section>
+          <div class="panel">
+            <h3>Как играть</h3>
+            <p class="help-text">Выбери свободный домик.</p>
+            <p class="help-text">В одиночной игре старт через 10 секунд.</p>
+            <p class="help-text">В кооперативе начало после входа второго игрока.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
 
-  <div id="touchControls" class="hidden">
-    <div id="joystickArea"><div id="joystickKnob"></div></div>
-    <div class="touch-actions">
-      <button id="runButton">🏃</button>
-      <button id="jumpButton">⬆</button>
-      <button id="interactButton">✋</button>
-    </div>
-  </div>
+    <section id="waitingScreen" class="screen">
+      <div class="waiting-card">
+        <div class="waiting-house">🏚️</div>
+        <div class="eyebrow">КОМНАТА ОЖИДАНИЯ</div>
+        <h2 id="waitingTitle">Ты вошёл в домик</h2>
+        <p id="waitingMessage">Ожидание начала игры...</p>
+        <div class="waiting-players">
+          <div class="waiting-player">
+            <span class="waiting-avatar">🧍</span>
+            <span id="waitingPlayerOne">Игрок 1</span>
+          </div>
+          <div class="waiting-player" id="secondPlayerSlot">
+            <span class="waiting-avatar">❔</span>
+            <span id="waitingPlayerTwo">Ожидание игрока</span>
+          </div>
+        </div>
+        <div class="countdown-number" id="countdownNumber">10</div>
+        <p class="muted-text">Подготовься к началу истории...</p>
+        <button id="leaveRoomButton" class="secondary-button">Выйти из комнаты</button>
+      </div>
+    </section>
 
-  <div id="crosshair" class="hidden">+</div>
+    <section id="settingsScreen" class="screen settings-screen">
+      <div class="settings-card">
+        <div class="section-heading">
+          <div>
+            <div class="eyebrow">ПЕРСОНАЛИЗАЦИЯ</div>
+            <h2>Настройки</h2>
+          </div>
+          <button id="closeSettingsButton" class="secondary-button small-button">Закрыть</button>
+        </div>
 
-  <div id="rotateMessage" class="hidden">
-    <div class="rotate-card">
-      <h2>📱 Поверни телефон</h2>
-      <p>Для удобной игры используй горизонтальный экран.</p>
-      <button id="rotateContinue" class="primary">ПРОДОЛЖИТЬ</button>
-    </div>
-  </div>
+        <div class="setting-row">
+          <div>
+            <strong>Чувствительность камеры</strong>
+            <p>Скорость поворота камеры пальцем</p>
+          </div>
+          <span id="sensitivityValue">50%</span>
+        </div>
+        <input id="sensitivitySlider" type="range" min="10" max="100" value="50">
+
+        <div class="setting-row">
+          <div>
+            <strong>Качество графики</strong>
+            <p>Для более плавной работы на телефоне</p>
+          </div>
+        </div>
+        <select id="graphicsQuality">
+          <option value="low">Низкое</option>
+          <option value="medium" selected>Среднее</option>
+          <option value="high">Высокое</option>
+        </select>
+
+        <div class="setting-row">
+          <div>
+            <strong>Звук</strong>
+            <p>Звуковые эффекты игры</p>
+          </div>
+          <label class="toggle">
+            <input id="soundToggle" type="checkbox" checked>
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <button id="fullscreenButton" class="primary-button">ПОЛНЫЙ ЭКРАН</button>
+        <p class="muted-text">Горизонтальная ориентация поддерживается не всеми браузерами автоматически.</p>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="screen game-screen">
+      <canvas id="gameCanvas"></canvas>
+
+      <div class="game-top-hud">
+        <div class="hud-card">
+          <span class="hud-label">ДЕНЬ</span>
+          <strong id="dayValue">1</strong>
+        </div>
+        <div class="hud-card time-card">
+          <span class="hud-label">ВРЕМЯ</span>
+          <strong id="timeValue">08:00</strong>
+        </div>
+        <div class="hud-card">
+          <span class="hud-label">ИГРОКИ</span>
+          <strong id="gamePlayerCount">1</strong>
+        </div>
+        <button id="gameSettingsButton" class="icon-button">⚙</button>
+      </div>
+
+      <div id="objectivePanel" class="objective-panel">
+        <span class="objective-icon">📌</span>
+        <div>
+          <small>ТВОЯ ЦЕЛЬ</small>
+          <strong id="objectiveText">Осмотрись вокруг</strong>
+        </div>
+      </div>
+
+      <div class="mobile-controls">
+        <div id="movementJoystick" class="joystick">
+          <div class="joystick-ring"></div>
+          <div id="movementStick" class="joystick-stick"></div>
+        </div>
+
+        <div id="lookArea" class="look-area">
+          <span>Проведи пальцем, чтобы осмотреться</span>
+        </div>
+
+        <div class="action-buttons">
+          <button id="interactButton" class="action-button">
+            <span>✋</span><small>Действие</small>
+          </button>
+          <button id="jumpButton" class="action-button">
+            <span>⬆</span><small>Прыжок</small>
+          </button>
+        </div>
+      </div>
+
+      <div class="game-bottom-hud">
+        <button id="chatToggleButton" class="chat-toggle">💬 Чат</button>
+        <span id="gameStatus">История начинается...</span>
+        <button id="exitGameButton" class="exit-button">Выйти</button>
+      </div>
+
+      <div id="chatPanel" class="chat-panel">
+        <div class="chat-header">
+          <strong>Общий чат</strong>
+          <button id="closeChatButton" class="icon-button">✕</button>
+        </div>
+        <div id="chatMessages" class="chat-messages"></div>
+        <form id="chatForm" class="chat-form">
+          <input id="chatInput" type="text" maxlength="180" placeholder="Напиши сообщение..." autocomplete="off">
+          <button type="submit">➤</button>
+        </form>
+      </div>
+
+      <div id="cutsceneOverlay" class="cutscene-overlay">
+        <div id="cutsceneVisual" class="cutscene-visual">
+          <div class="cutscene-moon"></div>
+          <div class="cutscene-road"></div>
+          <div class="cutscene-car">🚗</div>
+          <div class="cutscene-house">🏚️</div>
+        </div>
+        <div class="cutscene-caption">
+          <div class="eyebrow">THE LOCKED HOME</div>
+          <p id="cutsceneText">Родители привезли тебя домой...</p>
+          <h1 id="dayTitle" class="day-title">ДЕНЬ 1</h1>
+          <button id="skipCutsceneButton" class="primary-button">ПРОПУСТИТЬ</button>
+        </div>
+      </div>
+
+      <div id="gamePauseOverlay" class="pause-overlay hidden">
+        <div class="pause-card">
+          <h2>Пауза</h2>
+          <button id="resumeButton" class="primary-button">Продолжить</button>
+          <button id="pauseSettingsButton" class="secondary-button">Настройки</button>
+          <button id="pauseExitButton" class="secondary-button">Выйти в меню</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="notification" class="notification"></div>
+  </main>
 
   <script type="module" src="/game.js"></script>
 </body>
