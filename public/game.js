@@ -2194,7 +2194,8 @@ function boot() {
   setupControls();
   setupButtons();
   setupChat();
-
+   setupOrientation();
+   
   if ($('continueGameButton')) {
     $('continueGameButton').disabled = !saved;
   }
