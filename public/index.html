@@ -1,0 +1,103 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#10151b">
+  <title>THE LOCKED HOME: 14 DAYS</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div id="game"></div>
+
+  <section id="menu" class="screen">
+    <div class="menu-card">
+      <div class="eyebrow">SURVIVAL • 3D • MULTIPLAYER</div>
+      <h1>THE LOCKED<br><span>HOME</span></h1>
+      <p class="subtitle">14 дней до возвращения родителей</p>
+
+      <label for="nickname">ТВОЙ НИКНЕЙМ</label>
+      <input id="nickname" maxlength="20" placeholder="Выбери имя" value="Выживший">
+
+      <button id="playButton" class="primary">ИГРАТЬ</button>
+
+      <div id="roomPicker" class="hidden">
+        <h2>Выбери комнату</h2>
+        <button class="room-button" data-room="solo1">Одиночная #1 <span>1 игрок</span></button>
+        <button class="room-button" data-room="solo2">Одиночная #2 <span>1 игрок</span></button>
+        <button class="room-button" data-room="coop1">Кооператив #1 <span>до 2 игроков</span></button>
+        <button class="room-button" data-room="coop2">Кооператив #2 <span>до 2 игроков</span></button>
+        <button id="backButton" class="secondary">НАЗАД</button>
+      </div>
+
+      <p id="menuStatus" class="status">Подключение к серверу…</p>
+    </div>
+  </section>
+
+  <header id="hud" class="hidden">
+    <div class="hud-title">THE LOCKED HOME</div>
+    <div class="hud-info">
+      <span id="dayLabel">День 1 / 14</span>
+      <span id="timeLabel">06:00</span>
+      <span id="roomLabel">Комната</span>
+    </div>
+    <div class="stat"><span>❤ Здоровье</span><div><i id="healthBar"></i></div></div>
+    <div class="stat"><span>🍗 Голод</span><div><i id="hungerBar"></i></div></div>
+    <div class="stat"><span>💧 Жажда</span><div><i id="thirstBar"></i></div></div>
+    <div class="stat"><span>⚡ Выносливость</span><div><i id="staminaBar"></i></div></div>
+    <button id="inventoryButton" class="small-button">🎒 Рюкзак</button>
+    <button id="shopButton" class="small-button">🛒 Торговец</button>
+    <button id="leaveButton" class="small-button">↩ В меню</button>
+  </header>
+
+  <div id="hint" class="hidden">Исследуй территорию и найди вход в подвал.</div>
+  <div id="toast" class="toast hidden"></div>
+
+  <section id="inventoryPanel" class="panel hidden">
+    <button class="close-panel" data-close="inventoryPanel">✕</button>
+    <h2>🎒 Инвентарь</h2>
+    <div id="inventoryList"></div>
+    <button id="eatButton" class="primary">Использовать еду</button>
+    <button id="drinkButton" class="secondary">Выпить воду</button>
+  </section>
+
+  <section id="shopPanel" class="panel hidden">
+    <button class="close-panel" data-close="shopPanel">✕</button>
+    <h2>🛒 Торговец</h2>
+    <p>Деньги: <strong id="moneyLabel">500 ₽</strong></p>
+    <div id="shopList"></div>
+  </section>
+
+  <section id="chatPanel" class="chat-panel hidden">
+    <div class="chat-heading">💬 Чат комнаты</div>
+    <div id="chatMessages"></div>
+    <form id="chatForm">
+      <input id="chatInput" maxlength="250" placeholder="Сообщение…">
+      <button type="submit">➤</button>
+    </form>
+  </section>
+
+  <div id="touchControls" class="hidden">
+    <div id="joystickArea"><div id="joystickKnob"></div></div>
+    <div class="touch-actions">
+      <button id="runButton">🏃</button>
+      <button id="jumpButton">⬆</button>
+      <button id="interactButton">✋</button>
+    </div>
+  </div>
+
+  <div id="crosshair" class="hidden">+</div>
+
+  <div id="rotateMessage" class="hidden">
+    <div class="rotate-card">
+      <h2>📱 Поверни телефон</h2>
+      <p>Для удобной игры используй горизонтальный экран.</p>
+      <button id="rotateContinue" class="primary">ПРОДОЛЖИТЬ</button>
+    </div>
+  </div>
+
+  <script type="module" src="/game.js"></script>
+</body>
+</html>
