@@ -3,440 +3,347 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-  >
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1,
+                 minimum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#090d16">
-  <meta
-    name="description"
-    content="THE LOCKED HOME — 30 DAYS. Исследуй лес, шахту и дом, собирай ресурсы и выживи."
-  >
-
-  <title>THE LOCKED HOME — 30 DAYS</title>
-
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>THE LOCKED HOME: 30 DAYS</title>
   <link rel="stylesheet" href="/style.css">
 </head>
-
 <body>
-  <div id="app">
 
-    <!-- ГЛАВНОЕ МЕНЮ -->
-    <section id="mainMenu" class="screen active">
-      <div class="menu-card">
-        <div class="game-logo">SURVIVAL PROJECT</div>
-
-        <h1>THE LOCKED HOME</h1>
-        <div class="subtitle">30 DAYS TO SURVIVE</div>
-
-        <p class="menu-description">
-          Ты оказался в заброшенном лесу.
-          Впереди дом, подвал, шахта и неизвестные опасности.
-          Собирай ресурсы, следи за голодом и жаждой
-          и постарайся пережить все 30 дней.
-        </p>
-
-        <label for="playerName">Имя выжившего</label>
-        <input
-          id="playerName"
-          type="text"
-          maxlength="20"
-          placeholder="Выживший"
-          autocomplete="nickname"
-        >
-
-        <button id="startGameButton" class="primary-button">
-          НАЧАТЬ ВЫЖИВАНИЕ
-        </button>
-
-        <button id="continueGameButton" class="secondary-button">
-          ПРОДОЛЖИТЬ ИГРУ
-        </button>
-
-        <div class="menu-footer">
-          WASD — движение · E — взаимодействие · G — выбросить предмет
-        </div>
-      </div>
-    </section>
-
-
-    <!-- ОСНОВНАЯ ИГРА -->
-    <main id="gameScreen" class="screen game-screen">
-
-      <!-- 3D-СЦЕНА -->
-      <canvas id="gameCanvas"></canvas>
-
-
-      <!-- ВЕРХНЯЯ ПАНЕЛЬ -->
-      <header id="topBar">
-        <div class="brand">
-          <span class="brand-icon">⌂</span>
-
-          <div>
-            <strong>THE LOCKED HOME</strong>
-            <small>30 DAYS</small>
-          </div>
-        </div>
-
-        <div class="day-counter">
-          <span>ДЕНЬ</span>
-          <strong id="dayNumber">1</strong>
-          <span>/ 30</span>
-        </div>
-
-        <div class="clock">
-          <span>ВРЕМЯ</span>
-          <strong id="gameTime">08:00</strong>
-        </div>
-
-        <button id="pauseButton" class="icon-button" aria-label="Пауза">
-          Ⅱ
-        </button>
-      </header>
-
-
-      <!-- СОСТОЯНИЕ ИГРОКА -->
-      <section id="playerStatus" class="status-panel">
-        <div class="status-heading">СОСТОЯНИЕ</div>
-
-        <div class="status-row">
-          <span>❤️ Здоровье</span>
-
-          <div class="status-bar">
-            <div id="healthBar" class="status-fill health-fill"></div>
-          </div>
-
-          <strong id="healthValue">100</strong>
-        </div>
-
-        <div class="status-row">
-          <span>🍖 Голод</span>
-
-          <div class="status-bar">
-            <div id="hungerBar" class="status-fill hunger-fill"></div>
-          </div>
-
-          <strong id="hungerValue">100</strong>
-        </div>
-
-        <div class="status-row">
-          <span>💧 Жажда</span>
-
-          <div class="status-bar">
-            <div id="thirstBar" class="status-fill thirst-fill"></div>
-          </div>
-
-          <strong id="thirstValue">100</strong>
-        </div>
-
-        <div class="status-row">
-          <span>⚡ Энергия</span>
-
-          <div class="status-bar">
-            <div id="energyBar" class="status-fill energy-fill"></div>
-          </div>
-
-          <strong id="energyValue">100</strong>
-        </div>
-
-        <div class="money-display">
-          <span>Деньги</span>
-          <strong>₽ <span id="moneyValue">120</span></strong>
-        </div>
-      </section>
-
-
-      <!-- ТЕКУЩАЯ ЗАДАЧА -->
-      <section id="objectivePanel" class="objective-panel">
-        <div class="panel-label">ТВОЯ ЗАДАЧА</div>
-        <div id="objectiveText">
-          Осмотрись, найди дом и собери припасы.
-        </div>
-
-        <div class="location-line">
-          <span>Локация:</span>
-          <strong id="locationName">Старый лес</strong>
-        </div>
-      </section>
-
-
-      <!-- СООБЩЕНИЯ -->
-      <div id="notification" class="notification" role="status"></div>
-
-
-      <!-- ПРИЦЕЛ -->
-      <div id="crosshair">+</div>
-
-
-      <!-- ВЗАИМОДЕЙСТВИЕ -->
-      <section id="interactionPanel" class="interaction-panel">
-        <div class="interaction-info">
-          <strong id="targetName">Исследуй окрестности</strong>
-          <small id="targetDescription">
-            Подойди к предмету, чтобы взаимодействовать
-          </small>
-        </div>
-
-        <button id="interactButton" class="interact-button">
-          E · ДЕЙСТВИЕ
-        </button>
-      </section>
-
-
-      <!-- НИЖНИЙ ИНВЕНТАРЬ -->
-      <section id="hotbar" class="hotbar" aria-label="Панель предметов">
-
-        <button class="inventory-slot selected" data-slot="0">
-          <span class="slot-number">1</span>
-          <span class="slot-icon">🪓</span>
-          <span class="slot-name">Топор</span>
-          <span class="slot-count">1</span>
-        </button>
-
-        <button class="inventory-slot" data-slot="1">
-          <span class="slot-number">2</span>
-          <span class="slot-icon">🥫</span>
-          <span class="slot-name">Консервы</span>
-          <span class="slot-count">0</span>
-        </button>
-
-        <button class="inventory-slot" data-slot="2">
-          <span class="slot-number">3</span>
-          <span class="slot-icon">💧</span>
-          <span class="slot-name">Вода</span>
-          <span class="slot-count">0</span>
-        </button>
-
-        <button class="inventory-slot" data-slot="3">
-          <span class="slot-number">4</span>
-          <span class="slot-icon">🪵</span>
-          <span class="slot-name">Брёвна</span>
-          <span class="slot-count">0</span>
-        </button>
-
-        <button class="inventory-slot" data-slot="4">
-          <span class="slot-number">5</span>
-          <span class="slot-icon">🪨</span>
-          <span class="slot-name">Камень</span>
-          <span class="slot-count">0</span>
-        </button>
-
-        <button class="inventory-slot" data-slot="5">
-          <span class="slot-number">6</span>
-          <span class="slot-icon">🔦</span>
-          <span class="slot-name">Фонарь</span>
-          <span class="slot-count">0</span>
-        </button>
-
-        <button class="inventory-slot" data-slot="6">
-          <span class="slot-number">7</span>
-          <span class="slot-icon">🧴</span>
-          <span class="slot-name">Фильтр</span>
-          <span class="slot-count">0</span>
-        </button>
-
-        <button class="inventory-slot" data-slot="7">
-          <span class="slot-number">8</span>
-          <span class="slot-icon">＋</span>
-          <span class="slot-name">Пусто</span>
-          <span class="slot-count"></span>
-        </button>
-
-      </section>
-
-
-      <!-- БЫСТРЫЕ КНОПКИ -->
-      <nav id="quickActions" class="quick-actions">
-        <button id="openInventoryButton">🎒 Инвентарь</button>
-        <button id="openCraftingButton">🔨 Создание</button>
-        <button id="openShopButton">🛒 Магазин</button>
-        <button id="openCityButton">🚆 Переезд</button>
-        <button id="saveGameButton">💾 Сохранить</button>
-      </nav>
-
-
-      <!-- ПОЛНЫЙ ИНВЕНТАРЬ -->
-      <section id="inventoryPanel" class="modal-panel hidden">
-        <header class="modal-header">
-          <div>
-            <h2>Инвентарь</h2>
-            <p>Все найденные и собранные предметы</p>
-          </div>
-
-          <button class="close-button" data-close="inventoryPanel">✕</button>
-        </header>
-
-        <div id="inventoryItems" class="inventory-items"></div>
-
-        <div class="modal-actions">
-          <button id="useItemButton" class="primary-button">
-            Использовать
-          </button>
-
-          <button id="dropItemButton" class="danger-button">
-            Выбросить
-          </button>
-        </div>
-
-        <p class="hint">
-          Выбери предмет. Выброшенные предметы остаются в игровом мире,
-          пока ты не подберёшь их обратно.
-        </p>
-      </section>
-
-
-      <!-- СОЗДАНИЕ ПРЕДМЕТОВ -->
-      <section id="craftingPanel" class="modal-panel hidden">
-        <header class="modal-header">
-          <div>
-            <h2>Создание предметов</h2>
-            <p>Используй собранные ресурсы</p>
-          </div>
-
-          <button class="close-button" data-close="craftingPanel">✕</button>
-        </header>
-
-        <div id="craftingItems" class="shop-items"></div>
-      </section>
-
-
-      <!-- МАГАЗИН -->
-      <section id="shopPanel" class="modal-panel hidden">
-        <header class="modal-header">
-          <div>
-            <h2>Магазин выживших</h2>
-            <p>Покупай припасы и продавай найденные ресурсы</p>
-          </div>
-
-          <button class="close-button" data-close="shopPanel">✕</button>
-        </header>
-
-        <div class="shop-balance">
-          Твои деньги: <strong>₽ <span id="shopMoney">120</span></strong>
-        </div>
-
-        <h3>Покупка</h3>
-        <div id="shopItems" class="shop-items"></div>
-
-        <h3>Продажа</h3>
-        <div id="sellItems" class="shop-items"></div>
-      </section>
-
-
-      <!-- ПЕРЕЕЗД -->
-      <section id="cityPanel" class="modal-panel hidden">
-        <header class="modal-header">
-          <div>
-            <h2>Другой город</h2>
-            <p>Новая локация — новые возможности и опасности</p>
-          </div>
-
-          <button class="close-button" data-close="cityPanel">✕</button>
-        </header>
-
-        <div class="city-card">
-          <div class="city-illustration">🏙️</div>
-          <h3>Северный посёлок</h3>
-
-          <p>
-            Здесь можно найти торговцев, заброшенные здания
-            и новые ресурсы.
-          </p>
-
-          <div class="city-requirements">
-            <span>🎟️ Билет и расходы</span>
-            <strong>250 ₽</strong>
-          </div>
-
-          <button id="travelButton" class="primary-button">
-            Купить билет и переехать
-          </button>
-        </div>
-      </section>
-
-
-      <!-- ПАУЗА -->
-      <section id="pausePanel" class="modal-panel hidden">
-        <header class="modal-header">
-          <h2>Пауза</h2>
-          <button class="close-button" data-close="pausePanel">✕</button>
-        </header>
-
-        <button id="resumeButton" class="primary-button">
-          Продолжить
-        </button>
-
-        <button id="pauseSaveButton" class="secondary-button">
-          Сохранить прогресс
-        </button>
-
-        <button id="returnMenuButton" class="secondary-button">
-          В главное меню
-        </button>
-      </section>
-
-
-      <!-- МОБИЛЬНОЕ УПРАВЛЕНИЕ -->
-      <div id="mobileControls">
-        <div id="movementJoystick" class="movement-joystick">
-          <button data-move="forward" aria-label="Вперёд">▲</button>
-
-          <div class="joystick-middle">
-            <button data-move="left" aria-label="Влево">◀</button>
-            <span>●</span>
-            <button data-move="right" aria-label="Вправо">▶</button>
-          </div>
-
-          <button data-move="backward" aria-label="Назад">▼</button>
-        </div>
-
-        <div class="mobile-action-buttons">
-          <button id="mobileInteractButton">E</button>
-          <button id="mobileJumpButton">↑</button>
-          <button id="mobileDropButton">↧</button>
-        </div>
-      </div>
-
-
-      <!-- МУЛЬТИПЛЕЕРНЫЙ ЧАТ -->
-      <section id="chatPanel" class="chat-panel">
-        <div id="chatMessages" class="chat-messages"></div>
-
-        <form id="chatForm">
-          <input
-            id="chatInput"
-            type="text"
-            maxlength="180"
-            placeholder="Сообщение игрокам..."
-            autocomplete="off"
-          >
-
-          <button type="submit" aria-label="Отправить">➤</button>
-        </form>
-      </section>
-
-    </main>
-
-
-    <!-- КОНЕЦ ИГРЫ -->
-    <section id="gameOverScreen" class="screen hidden">
-      <div class="menu-card">
-        <div class="game-logo">SURVIVAL REPORT</div>
-        <h1 id="gameOverTitle">Выживание окончено</h1>
-        <p id="gameOverDescription"></p>
-
-        <button id="restartButton" class="primary-button">
-          Начать заново
-        </button>
-      </div>
-    </section>
-
+  <!-- Требование горизонтального экрана -->
+  <div id="orientationScreen">
+    <div class="orientation-card">
+      <div class="rotate-phone">📱</div>
+      <h1>Поверни телефон</h1>
+      <p>Игра предназначена для горизонтального экрана.</p>
+      <button id="orientationContinueButton" type="button">
+        Продолжить
+      </button>
+      <p class="small-note">
+        Если автоматический поворот отключён, включи его в настройках телефона.
+      </p>
+    </div>
   </div>
 
-  <!-- Socket.IO для сетевого режима -->
-  <script src="/socket.io/socket.io.js"></script>
+  <!-- Главное меню -->
+  <main id="mainMenu">
+    <div class="menu-background"></div>
 
-  <!-- Основная игровая логика -->
+    <section class="menu-card">
+      <div class="game-logo">THE LOCKED HOME</div>
+      <div class="game-subtitle">30 DAYS TO SURVIVE</div>
+
+      <div class="menu-story">
+        Ты оказался в незнакомом месте. До помощи ещё далеко.
+        Исследуй окрестности, добывай ресурсы и продержись 30 дней.
+      </div>
+
+      <label for="playerName">Имя игрока</label>
+      <input id="playerName" maxlength="20"
+             autocomplete="nickname" placeholder="Выживший">
+
+      <div class="menu-buttons">
+        <button id="startGameButton" class="primary-button" type="button">
+          НОВАЯ ИГРА
+        </button>
+        <button id="continueGameButton" type="button" disabled>
+          ПРОДОЛЖИТЬ
+        </button>
+        <button id="openMainSettingsButton" type="button">
+          НАСТРОЙКИ
+        </button>
+        <button id="menuPlayersButton" type="button">
+          ИГРОКИ И МУЛЬТИПЛЕЕР
+        </button>
+      </div>
+
+      <div class="menu-footer">
+        <span>3D SURVIVAL</span>
+        <span>DAY 1 — DAY 30</span>
+      </div>
+    </section>
+  </main>
+
+  <!-- Игровой экран -->
+  <main id="gameScreen" class="hidden">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Верхняя панель -->
+    <header id="topBar">
+      <div class="top-info">
+        <span id="dayNumber">День 1/30</span>
+        <span id="gameTime">08:00</span>
+        <span id="connectionStatus">Офлайн</span>
+      </div>
+      <div class="top-buttons">
+        <button id="playersButton" type="button">👥 <span id="playerCount">1</span></button>
+        <button id="pauseButton" type="button">Ⅱ</button>
+      </div>
+    </header>
+
+    <!-- Статистика -->
+    <section id="statusPanel">
+      <div class="stat-row">
+        <span class="stat-label">❤️ Здоровье</span>
+        <div class="stat-track"><div id="healthBar" class="stat-bar"></div></div>
+        <span id="healthValue" class="stat-value">100</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">🍖 Голод</span>
+        <div class="stat-track"><div id="hungerBar" class="stat-bar"></div></div>
+        <span id="hungerValue" class="stat-value">100</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">💧 Жажда</span>
+        <div class="stat-track"><div id="thirstBar" class="stat-bar"></div></div>
+        <span id="thirstValue" class="stat-value">100</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">⚡ Энергия</span>
+        <div class="stat-track"><div id="energyBar" class="stat-bar"></div></div>
+        <span id="energyValue" class="stat-value">100</span>
+      </div>
+      <div id="moneyValue">💰 50</div>
+    </section>
+
+    <!-- Задача и локация -->
+    <section id="objectivePanel">
+      <div id="locationName">Тихий посёлок</div>
+      <div id="objectiveText">Исследуй дом и найди припасы</div>
+    </section>
+
+    <div id="crosshair" aria-hidden="true"></div>
+    <div id="notification" class="hidden" role="status"></div>
+
+    <!-- Взаимодействие -->
+    <section id="targetPanel" class="hidden">
+      <div id="targetName">Предмет</div>
+      <div id="targetDescription">Описание предмета</div>
+      <button id="interactButton" type="button">ВЗАИМОДЕЙСТВОВАТЬ</button>
+    </section>
+
+    <!-- Горячая панель -->
+    <section id="hotbar" aria-label="Быстрые слоты">
+      <button class="inventory-slot selected" data-slot="0" type="button">
+        <span class="slot-number">1</span>
+        <span class="slot-icon"></span>
+        <span class="slot-name"></span>
+        <span class="slot-count"></span>
+      </button>
+      <button class="inventory-slot" data-slot="1" type="button">
+        <span class="slot-number">2</span>
+        <span class="slot-icon"></span>
+        <span class="slot-name"></span>
+        <span class="slot-count"></span>
+      </button>
+      <button class="inventory-slot" data-slot="2" type="button">
+        <span class="slot-number">3</span>
+        <span class="slot-icon"></span>
+        <span class="slot-name"></span>
+        <span class="slot-count"></span>
+      </button>
+      <button class="inventory-slot" data-slot="3" type="button">
+        <span class="slot-number">4</span>
+        <span class="slot-icon"></span>
+        <span class="slot-name"></span>
+        <span class="slot-count"></span>
+      </button>
+      <button class="inventory-slot" data-slot="4" type="button">
+        <span class="slot-number">5</span>
+        <span class="slot-icon"></span>
+        <span class="slot-name"></span>
+        <span class="slot-count"></span>
+      </button>
+      <button class="inventory-slot" data-slot="5" type="button">
+        <span class="slot-number">6</span>
+        <span class="slot-icon"></span>
+        <span class="slot-name"></span>
+        <span class="slot-count"></span>
+      </button>
+      <button class="inventory-slot" data-slot="6" type="button">
+        <span class="slot-number">7</span>
+        <span class="slot-icon"></span>
+        <span class="slot-name"></span>
+        <span class="slot-count"></span>
+      </button>
+      <button class="inventory-slot" data-slot="7" type="button">
+        <span class="slot-number">8</span>
+        <span class="slot-icon"></span>
+        <span class="slot-name"></span>
+        <span class="slot-count"></span>
+      </button>
+    </section>
+
+    <!-- Мобильное управление -->
+    <section id="mobileControls">
+      <div id="movementJoystick" aria-label="Движение">
+        <div class="joystick-knob"></div>
+      </div>
+
+      <div id="mobileActionButtons">
+        <button id="mobileDropButton" type="button">⬇<small>Бросить</small></button>
+        <button id="mobileInteractButton" type="button">✋<small>Действие</small></button>
+        <button id="mobileJumpButton" type="button">⬆<small>Прыжок</small></button>
+      </div>
+    </section>
+
+    <!-- Боковые действия для компьютера -->
+    <section id="actionButtons">
+      <button id="openInventoryButton" type="button">🎒 Инвентарь</button>
+      <button id="openCraftingButton" type="button">🛠️ Крафт</button>
+      <button id="openShopButton" type="button">🛒 Магазин</button>
+      <button id="openCityButton" type="button">🏙️ Другой город</button>
+      <button id="saveGameButton" type="button">💾 Сохранить</button>
+    </section>
+
+    <!-- Чат -->
+    <section id="chatPanel">
+      <div id="chatHeader">
+        <span>Чат игроков</span>
+        <button id="toggleChatButton" type="button" aria-label="Свернуть чат">−</button>
+      </div>
+      <div id="chatMessages" aria-live="polite"></div>
+      <form id="chatForm">
+        <input id="chatInput" maxlength="180"
+               placeholder="Сообщение..." autocomplete="off">
+        <button type="submit">➤</button>
+      </form>
+    </section>
+  </main>
+
+  <!-- Кат-сцена -->
+  <section id="cutsceneScreen" class="hidden">
+    <canvas id="cutsceneCanvas"></canvas>
+
+    <div class="cutscene-vignette"></div>
+
+    <div id="cutsceneTop">
+      <span>THE LOCKED HOME</span>
+      <span>DAY 01</span>
+    </div>
+
+    <div id="cutsceneSubtitles">
+      <div id="cutsceneSpeaker">НЕИЗВЕСТНЫЙ</div>
+      <div id="cutsceneText">Что это за место?..</div>
+    </div>
+
+    <div id="cutsceneControls">
+      <div id="cutsceneProgressTrack">
+        <div id="cutsceneProgress"></div>
+      </div>
+      <button id="skipCutsceneButton" type="button">ПРОПУСТИТЬ »</button>
+    </div>
+  </section>
+
+  <!-- Список игроков -->
+  <section id="playersPanel" class="game-panel hidden">
+    <button class="panel-close" data-close-panel type="button">×</button>
+    <h2>Игроки</h2>
+    <p class="panel-description">
+      Игроки, подключённые к текущей игровой сессии.
+    </p>
+    <div id="playersConnectionInfo">Подключение...</div>
+    <div id="playersList"></div>
+    <button id="refreshPlayersButton" type="button">Обновить список</button>
+    <button id="inviteInfoButton" type="button">Информация о подключении</button>
+  </section>
+
+  <!-- Настройки -->
+  <section id="settingsPanel" class="game-panel hidden">
+    <button class="panel-close" data-close-panel type="button">×</button>
+    <h2>Настройки</h2>
+
+    <label for="lookSensitivity">Чувствительность камеры</label>
+    <input id="lookSensitivity" type="range" min="1" max="15" value="6">
+
+    <label for="graphicsQuality">Качество графики</label>
+    <select id="graphicsQuality">
+      <option value="low">Низкое — для слабых телефонов</option>
+      <option value="medium" selected>Среднее</option>
+      <option value="high">Высокое</option>
+    </select>
+
+    <label class="setting-checkbox">
+      <input id="showFPS" type="checkbox">
+      Показывать FPS
+    </label>
+
+    <label class="setting-checkbox">
+      <input id="invertCamera" type="checkbox">
+      Инвертировать вертикальный обзор
+    </label>
+
+    <button id="applySettingsButton" type="button">Применить</button>
+  </section>
+
+  <!-- Инвентарь -->
+  <section id="inventoryPanel" class="game-panel hidden">
+    <button class="panel-close" data-close-panel type="button">×</button>
+    <h2>Инвентарь</h2>
+    <div id="inventoryItems"></div>
+    <div class="panel-actions">
+      <button id="useItemButton" type="button">Использовать</button>
+      <button id="dropItemButton" type="button">Выбросить</button>
+    </div>
+  </section>
+
+  <!-- Крафт -->
+  <section id="craftingPanel" class="game-panel hidden">
+    <button class="panel-close" data-close-panel type="button">×</button>
+    <h2>Создание предметов</h2>
+    <p class="panel-description">Собирай ресурсы и изготавливай снаряжение.</p>
+    <div id="craftingItems"></div>
+  </section>
+
+  <!-- Магазин -->
+  <section id="shopPanel" class="game-panel hidden">
+    <button class="panel-close" data-close-panel type="button">×</button>
+    <h2>Торговец</h2>
+    <div id="shopMoney">Деньги: 50</div>
+    <h3>Покупка</h3>
+    <div id="shopItems"></div>
+    <h3>Продажа</h3>
+    <div id="sellItems"></div>
+  </section>
+
+  <!-- Выбор города -->
+  <section id="cityPanel" class="game-panel hidden">
+    <button class="panel-close" data-close-panel type="button">×</button>
+    <h2>Переезд</h2>
+    <p class="panel-description">
+      Подготовь припасы перед путешествием.
+    </p>
+    <div id="cityList"></div>
+    <button id="travelButton" type="button">Переехать</button>
+  </section>
+
+  <!-- Пауза -->
+  <section id="pausePanel" class="game-panel hidden">
+    <h2>Пауза</h2>
+    <button id="resumeButton" type="button">Продолжить игру</button>
+    <button id="pauseSaveButton" type="button">Сохранить</button>
+    <button id="pauseSettingsButton" type="button">Настройки</button>
+    <button id="pausePlayersButton" type="button">Игроки</button>
+    <button id="returnMenuButton" type="button">В главное меню</button>
+  </section>
+
+  <!-- Конец игры -->
+  <section id="gameOverScreen" class="hidden">
+    <div class="game-over-card">
+      <h1 id="gameOverTitle">Конец игры</h1>
+      <p id="gameOverDescription"></p>
+      <button id="restartButton" type="button">Начать заново</button>
+      <button id="gameOverMenuButton" type="button">В меню</button>
+    </div>
+  </section>
+
+  <!-- FPS -->
+  <div id="fpsCounter" class="hidden">FPS: 60</div>
+
+  <script src="/socket.io/socket.io.js"></script>
   <script type="module" src="/game.js"></script>
 </body>
 </html>
