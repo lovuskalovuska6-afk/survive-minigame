@@ -2,1244 +2,1595 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
 import { Multiplayer } from './multiplayer.js';
 
+'use strict';
+
+// ======================================================
+// THE LOCKED HOME: 14 DAYS
+// Основной игровой клиент
+// ======================================================
+
 const $ = (id) => document.getElementById(id);
 
-const ui = {
-  menu: $('menu'),
-  roomPicker: $('roomPicker'),
-  playButton: $('playButton'),
-  nickname: $('nickname'),
-  menuStatus: $('menuStatus'),
-  hud: $('hud'),
-  dayLabel: $('dayLabel'),
-  timeLabel: $('timeLabel'),
-  roomLabel: $('roomLabel'),
-  healthBar: $('healthBar'),
-  hungerBar: $('hungerBar'),
-  thirstBar: $('thirstBar'),
-  staminaBar: $('staminaBar'),
-  hint: $('hint'),
-  toast: $('toast'),
-  inventoryPanel: $('inventoryPanel'),
-  shopPanel: $('shopPanel'),
-  inventoryList: $('inventoryList'),
-  shopList: $('shopList'),
-  moneyLabel: $('moneyLabel'),
-  chatPanel: $('chatPanel'),
-  chatMessages: $('chatMessages'),
-  chatForm: $('chatForm'),
-  chatInput: $('chatInput'),
-  touchControls: $('touchControls'),
-  crosshair: $('crosshair'),
-  rotateMessage: $('rotateMessage')
-};
+const multiplayer = new Multiplayer();
 
 const state = {
-  playing: false,
+  screen: 'menu',
   roomId: null,
-  mode: 'solo',
+  playing: false,
+  paused: false,
+  cutscene: false,
+  cutsceneStep: 0,
+  cutsceneElapsed: 0,
+
   day: 1,
-  minutes: 360,
-  health: 100,
-  hunger: 100,
-  thirst: 100,
-  stamina: 100,
-  money: 500,
-  basement: false,
-  inventory: {
-    'Вода': 2,
-    'Консервы': 2,
-    'Дерево': 0,
-    'Камень': 0,
-    'Рыба': 0,
-    'Травы': 0,
-    'Аптечка': 0,
-    'Фонарик': 0,
-    'Топор': 0,
-    'Удочка': 0,
-    'Зажигалка': 0,
-    'Кровать': 0
-  },
-  keys: {},
-  joyX: 0,
-  joyY: 0,
-  running: false,
-  jumping: false,
-  jumpVelocity: 0,
-  onGround: true,
-  lastTime: 0,
+  minutes: 8 * 60,
+  clockAccumulator: 0,
+
+  sensitivity: 0.5,
+  graphics: 'medium',
+  sound: true,
+
+  joystickX: 0,
+  joystickY: 0,
+  lookPointerId: null,
+  lookLastX: 0,
+  lookLastY: 0,
+
+  yaw: 0,
+  pitch: 0,
+  verticalVelocity: 0,
+  grounded: true,
+
+  playerSpeed: 4.5,
+  jumpPower: 5.2,
+
   lastNetworkUpdate: 0,
-  lastStatsUpdate: 0,
-  toastTimer: null
+  lastChatMessage: 0,
+  countdown: null,
+
+  remotePlayers: new Map(),
+  keys: new Set(),
+
+  started: false,
+  notifiedRoomError: false
 };
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x9bb7c7);
-scene.fog = new THREE.Fog(0x9bb7c7, 35, 110);
+let scene;
+let camera;
+let renderer;
+let clock;
+let player;
+let playerBody;
+let playerHead;
+let worldGroup;
+let remoteGroup;
+let worldReady = false;
+let lastFrameTime = 0;
+let notificationTimeout = null;
+let lastPositionSent = 0;
+let animationFrame = 0;
+let chatWasOpenBeforePause = false;
 
-const camera = new THREE.PerspectiveCamera(
-  72,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  300
-);
-
-const renderer = new THREE.WebGLRenderer({
-  antialias: true,
-  powerPreference: 'high-performance'
-});
-
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-$('game').appendChild(renderer.domElement);
-
-scene.add(new THREE.HemisphereLight(0xd9eaff, 0x46503a, 2));
-
-const sun = new THREE.DirectionalLight(0xffe1ad, 2.2);
-sun.position.set(20, 35, 15);
-sun.castShadow = true;
-sun.shadow.mapSize.set(1024, 1024);
-scene.add(sun);
-
-const mat = (color, roughness = 0.9) =>
-  new THREE.MeshStandardMaterial({ color, roughness });
-
-const materials = {
-  grass: mat(0x526c42),
-  dirt: mat(0x78644b),
-  wood: mat(0x70482c),
-  darkWood: mat(0x49301f),
-  wall: mat(0xc6b79b),
-  roof: mat(0x4b3733),
-  glass: new THREE.MeshStandardMaterial({
-    color: 0x82b8d0,
-    roughness: 0.3,
-    metalness: 0.1
-  }),
-  stone: mat(0x777c7d),
-  leaf: mat(0x365d39),
-  trader: mat(0xd4a34b),
-  player: mat(0x477fc4)
+const ROOM_NAMES = {
+  solo1: 'Одиночная комната 1',
+  solo2: 'Одиночная комната 2',
+  coop1: 'Кооперативная комната 1',
+  coop2: 'Кооперативная комната 2'
 };
 
-function box(parent, x, y, z, sx, sy, sz, material, options = {}) {
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(sx, sy, sz),
-    material
+const REMOTE_COLORS = [
+  0x68a5ff,
+  0xff9c6b,
+  0x8fe1b5,
+  0xd9a2ff,
+  0xffd56a
+];
+
+// ======================================================
+// UI
+// ======================================================
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach((screen) => {
+    screen.classList.remove('active');
+  });
+
+  const target = $(
+    name === 'menu' ? 'mainMenu' :
+    name === 'lobby' ? 'lobbyScreen' :
+    name === 'waiting' ? 'waitingScreen' :
+    name === 'settings' ? 'settingsScreen' :
+    'gameScreen'
   );
 
-  mesh.position.set(x, y, z);
-  mesh.castShadow = options.castShadow !== false;
-  mesh.receiveShadow = true;
-  parent.add(mesh);
-  return mesh;
+  if (target) target.classList.add('active');
+
+  state.screen = name;
+
+  document.body.classList.toggle(
+    'playing',
+    name === 'game' || name === 'waiting'
+  );
+
+  if (name === 'game') {
+    resizeRenderer();
+    requestAnimationFrame(resizeRenderer);
+  }
 }
 
-function cylinder(parent, x, y, z, rt, rb, h, material, sides = 8) {
-  const mesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(rt, rb, h, sides),
-    material
+function notify(message, duration = 2600) {
+  const element = $('notification');
+  if (!element) return;
+
+  element.textContent = String(message);
+  element.classList.add('visible');
+
+  if (notificationTimeout) {
+    clearTimeout(notificationTimeout);
+  }
+
+  notificationTimeout = setTimeout(() => {
+    element.classList.remove('visible');
+  }, duration);
+}
+
+function setConnectionStatus(text, connected = false) {
+  const element = $('connectionStatus');
+  if (!element) return;
+
+  element.textContent = text;
+  element.style.color = connected ? '#4ade80' : '#fbbf24';
+}
+
+function updateSensitivity(value) {
+  const numericValue = Number(value);
+  state.sensitivity = Math.max(0.1, Math.min(1, numericValue / 100));
+
+  const label = $('sensitivityValue');
+  if (label) label.textContent = `${Math.round(state.sensitivity * 100)}%`;
+}
+
+function updateClockUI() {
+  const dayElement = $('dayValue');
+  const timeElement = $('timeValue');
+
+  if (dayElement) dayElement.textContent = String(state.day);
+
+  if (timeElement) {
+    const hours = Math.floor(state.minutes / 60) % 24;
+    const minutes = Math.floor(state.minutes) % 60;
+
+    timeElement.textContent =
+      `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  }
+}
+
+function setObjective(text) {
+  const element = $('objectiveText');
+  if (element) element.textContent = text;
+}
+
+function setGameStatus(text) {
+  const element = $('gameStatus');
+  if (element) element.textContent = text;
+}
+
+function setCutsceneText(text) {
+  const element = $('cutsceneText');
+  if (element) element.textContent = text;
+}
+
+function openSettings() {
+  state.screenBeforeSettings = state.screen;
+  showScreen('settings');
+}
+
+function closeSettings() {
+  showScreen(state.screenBeforeSettings || 'menu');
+}
+
+function setChatOpen(open) {
+  const panel = $('chatPanel');
+  if (panel) panel.classList.toggle('open', open);
+}
+
+function addChatMessage(name, message) {
+  const container = $('chatMessages');
+  if (!container) return;
+
+  const row = document.createElement('div');
+  row.className = 'chat-message';
+
+  const author = document.createElement('strong');
+  author.textContent = `${String(name || 'Игрок').slice(0, 20)}: `;
+
+  const text = document.createElement('span');
+  text.textContent = String(message || '').slice(0, 180);
+
+  row.append(author, text);
+  container.appendChild(row);
+
+  while (container.children.length > 70) {
+    container.removeChild(container.firstChild);
+  }
+
+  container.scrollTop = container.scrollHeight;
+}
+
+function updatePlayerCount(players) {
+  const element = $('gamePlayerCount');
+  if (element) element.textContent = String(Math.max(1, players || 1));
+}
+
+// ======================================================
+// THREE.JS: СОЗДАНИЕ 3D-МИРА
+// ======================================================
+
+function initWorld() {
+  if (worldReady) return;
+
+  const canvas = $('gameCanvas');
+  if (!canvas) return;
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x91a4b6);
+  scene.fog = new THREE.Fog(0x91a4b6, 32, 115);
+
+  camera = new THREE.PerspectiveCamera(
+    72,
+    Math.max(1, window.innerWidth) / Math.max(1, window.innerHeight),
+    0.1,
+    250
   );
 
+  renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: state.graphics !== 'low',
+    alpha: false,
+    powerPreference: 'high-performance'
+  });
+
+  renderer.setPixelRatio(
+    Math.min(window.devicePixelRatio || 1, state.graphics === 'high' ? 2 : 1.35)
+  );
+
+  renderer.shadowMap.enabled = state.graphics !== 'low';
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  if ('outputColorSpace' in renderer) {
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+  }
+
+  if ('toneMapping' in renderer) {
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+  }
+
+  clock = new THREE.Clock();
+
+  worldGroup = new THREE.Group();
+  remoteGroup = new THREE.Group();
+
+  scene.add(worldGroup);
+  scene.add(remoteGroup);
+
+  createLighting();
+  createGround();
+  createHouse();
+  createTrees();
+  createPath();
+  createPlayer();
+
+  window.addEventListener('resize', resizeRenderer);
+
+  worldReady = true;
+  resizeRenderer();
+}
+
+function createLighting() {
+  const ambient = new THREE.HemisphereLight(
+    0xc6d8f0,
+    0x34402f,
+    2.0
+  );
+  scene.add(ambient);
+
+  const sun = new THREE.DirectionalLight(0xffe3b0, 2.4);
+  sun.position.set(-15, 25, 12);
+  sun.castShadow = state.graphics !== 'low';
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.left = -30;
+  sun.shadow.camera.right = 30;
+  sun.shadow.camera.top = 30;
+  sun.shadow.camera.bottom = -30;
+  scene.add(sun);
+
+  const moonGlow = new THREE.PointLight(0x91b7ff, 0.4, 40);
+  moonGlow.position.set(12, 9, -16);
+  scene.add(moonGlow);
+}
+
+function createGround() {
+  const groundGeometry = new THREE.PlaneGeometry(220, 220, 1, 1);
+  const groundMaterial = new THREE.MeshStandardMaterial({
+    color: 0x35493a,
+    roughness: 1
+  });
+
+  const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.06;
+  ground.receiveShadow = true;
+  worldGroup.add(ground);
+
+  const clearing = new THREE.Mesh(
+    new THREE.CircleGeometry(22, 48),
+    new THREE.MeshStandardMaterial({
+      color: 0x526044,
+      roughness: 1
+    })
+  );
+
+  clearing.rotation.x = -Math.PI / 2;
+  clearing.position.y = -0.025;
+  worldGroup.add(clearing);
+}
+
+function makeBox(width, height, depth, color, x, y, z, parent = worldGroup) {
+  const geometry = new THREE.BoxGeometry(width, height, depth);
+  const material = new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.92
+  });
+
+  const mesh = new THREE.Mesh(geometry, material);
   mesh.position.set(x, y, z);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   parent.add(mesh);
+
   return mesh;
 }
 
-const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(220, 220),
-  materials.grass
-);
+function createHouse() {
+  const x = 0;
+  const z = -13;
 
-ground.rotation.x = -Math.PI / 2;
-ground.receiveShadow = true;
-scene.add(ground);
+  // Дом
+  makeBox(11, 6, 9, 0x78644e, x, 3, z);
 
-const pathMesh = new THREE.Mesh(
-  new THREE.PlaneGeometry(8, 90),
-  materials.dirt
-);
+  // Крыша
+  const roofGeometry = new THREE.ConeGeometry(8.1, 4.4, 4);
+  const roofMaterial = new THREE.MeshStandardMaterial({
+    color: 0x352d2c,
+    roughness: 1
+  });
 
-pathMesh.rotation.x = -Math.PI / 2;
-pathMesh.position.set(0, 0.015, -20);
-scene.add(pathMesh);
+  const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+  roof.position.set(x, 7.4, z);
+  roof.rotation.y = Math.PI / 4;
+  roof.castShadow = true;
+  worldGroup.add(roof);
 
-const house = new THREE.Group();
-house.position.set(0, 0, -12);
-scene.add(house);
+  // Дверь
+  makeBox(1.7, 3.2, 0.2, 0x241d19, x, 1.6, z + 4.61);
 
-// Основной дом.
-box(house, 0, 2, 0, 12, 4, 9, materials.wall);
-box(house, 0, 4.25, 0, 13, 0.35, 10, materials.darkWood);
-
-// Двускатная крыша.
-const roofLeft = box(
-  house, -3, 5.15, 0, 7, 0.3, 10, materials.roof
-);
-roofLeft.rotation.z = -0.42;
-
-const roofRight = box(
-  house, 3, 5.15, 0, 7, 0.3, 10, materials.roof
-);
-roofRight.rotation.z = 0.42;
-
-// Фасадные двери и окна.
-box(house, 0, 1.2, 4.57, 1.6, 2.4, 0.16, materials.darkWood);
-box(house, -3.6, 2.5, 4.62, 1.5, 1.2, 0.12, materials.glass);
-box(house, 3.6, 2.5, 4.62, 1.5, 1.2, 0.12, materials.glass);
-
-const door = box(
-  house, 0, 1.2, 4.68, 1.45, 2.25, 0.12, materials.wood
-);
-
-const doorKnob = cylinder(
-  house, 0.48, 1.2, 4.78, 0.07, 0.07, 0.08, materials.trader, 10
-);
-doorKnob.rotation.x = Math.PI / 2;
-
-// Подвал снаружи: отдельный вход и ступени.
-const basementEntrance = new THREE.Group();
-basementEntrance.position.set(8, 0, -10);
-scene.add(basementEntrance);
-
-box(
-  basementEntrance, 0, 0.25, 0, 3.5, 0.5, 4,
-  materials.darkWood
-);
-
-for (let i = 0; i < 5; i++) {
-  box(
-    basementEntrance,
-    0,
-    -0.05 - i * 0.22,
-    1.2 + i * 0.6,
-    2.7,
-    0.18,
-    0.65,
-    materials.stone
-  );
-}
-
-box(
-  basementEntrance, 0, 0.7, -1.5, 2.8, 1.4, 0.18,
-  materials.wood
-);
-
-const basementDoor = box(
-  basementEntrance, 0, 0.7, -1.38, 2.3, 1.1, 0.12,
-  materials.darkWood
-);
-
-function makeTree(x, z, scale = 1) {
-  const tree = new THREE.Group();
-  tree.position.set(x, 0, z);
-  tree.scale.setScalar(scale);
-
-  cylinder(
-    tree, 0, 1.3, 0, 0.28, 0.4, 2.6, materials.wood
+  // Ручка
+  const knob = new THREE.Mesh(
+    new THREE.SphereGeometry(0.09, 10, 8),
+    new THREE.MeshStandardMaterial({
+      color: 0xd3b66d,
+      metalness: 0.65,
+      roughness: 0.3
+    })
   );
 
-  const leaves = new THREE.Mesh(
-    new THREE.ConeGeometry(1.5, 3.2, 7),
-    materials.leaf
-  );
+  knob.position.set(0.48, 1.6, z + 4.77);
+  worldGroup.add(knob);
 
-  leaves.position.y = 3.2;
-  leaves.castShadow = true;
-  tree.add(leaves);
-
-  const top = new THREE.Mesh(
-    new THREE.ConeGeometry(1.1, 2.4, 7),
-    mat(0x426d40)
-  );
-
-  top.position.y = 4.4;
-  top.castShadow = true;
-  tree.add(top);
-
-  scene.add(tree);
-}
-
-for (let i = 0; i < 55; i++) {
-  const angle = Math.random() * Math.PI * 2;
-  const radius = 18 + Math.random() * 48;
-
-  makeTree(
-    Math.cos(angle) * radius,
-    -12 + Math.sin(angle) * radius,
-    0.7 + Math.random() * 0.7
-  );
-}
-
-// Камни для сбора.
-const resourceObjects = [];
-
-for (let i = 0; i < 15; i++) {
-  const x = (Math.random() - 0.5) * 45;
-  const z = -12 + (Math.random() - 0.5) * 55;
-
-  if (Math.abs(x) < 8 && Math.abs(z + 12) < 8) continue;
-
-  const rock = new THREE.Mesh(
-    new THREE.DodecahedronGeometry(0.35 + Math.random() * 0.4, 0),
-    materials.stone
-  );
-
-  rock.position.set(x, 0.35, z);
-  rock.castShadow = true;
-  rock.userData = { type: 'Камень', collected: false };
-
-  scene.add(rock);
-  resourceObjects.push(rock);
-}
-
-// Деревянные брёвна.
-for (let i = 0; i < 12; i++) {
-  const x = (Math.random() - 0.5) * 35;
-  const z = -12 + (Math.random() - 0.5) * 40;
-
-  if (Math.abs(x) < 8 && Math.abs(z + 12) < 8) continue;
-
-  const log = cylinder(
-    scene, x, 0.22, z, 0.22, 0.22, 1.6, materials.wood, 8
-  );
-
-  log.rotation.z = Math.PI / 2;
-  log.userData = { type: 'Дерево', collected: false };
-  resourceObjects.push(log);
-}
-
-// Торговец.
-const trader = new THREE.Group();
-trader.position.set(-8, 0, -4);
-scene.add(trader);
-
-cylinder(
-  trader, 0, 0.95, 0, 0.35, 0.4, 1.2, materials.trader
-);
-
-box(trader, 0, 1.75, 0, 0.85, 0.75, 0.6, materials.wood);
-
-box(trader, 0, 2.2, 0, 1.3, 0.15, 0.9, materials.trader);
-
-cylinder(
-  trader, 0, 2.65, 0, 0.38, 0.38, 0.45, materials.player
-);
-
-// Табличка над торговцем.
-const sign = box(
-  trader, 0, 3.2, 0, 2.2, 0.55, 0.12, materials.darkWood
-);
-
-// Игрок.
-const player = new THREE.Group();
-scene.add(player);
-
-const playerBody = box(
-  player, 0, 1, 0, 0.7, 1.1, 0.45, materials.player
-);
-
-const playerHead = new THREE.Mesh(
-  new THREE.SphereGeometry(0.3, 12, 10),
-  mat(0xe0b18a)
-);
-
-playerHead.position.y = 1.8;
-playerHead.castShadow = true;
-player.add(playerHead);
-
-const playerLegs = [
-  box(player, -0.2, 0.35, 0, 0.22, 0.7, 0.25, materials.darkWood),
-  box(player, 0.2, 0.35, 0, 0.22, 0.7, 0.25, materials.darkWood)
-];
-
-const remotePlayers = new Map();
-
-const multiplayer = new Multiplayer({
-  onStatus: (message) => {
-    ui.menuStatus.textContent = message;
-  },
-
-  onReady: (data) => {
-    if (data.nickname) {
-      ui.nickname.value = data.nickname;
-    }
-  },
-
-  onError: (message) => showToast(message),
-
-  onRoomJoined: (data) => {
-    state.roomId = data.roomId;
-    state.mode = data.mode;
-    state.playing = true;
-
-    ui.menu.classList.add('hidden');
-    ui.hud.classList.remove('hidden');
-    ui.chatPanel.classList.remove('hidden');
-    ui.touchControls.classList.remove('hidden');
-    ui.crosshair.classList.remove('hidden');
-
-    ui.roomLabel.textContent = data.name;
-    ui.hint.textContent =
-      'Исследуй территорию. Подойди к дому или торговцу.';
-
-    addSystemMessage(`Ты вошёл в комнату: ${data.name}`);
-
-    if (data.players) {
-      data.players.forEach(addOrUpdateRemotePlayer);
-    }
-  },
-
-  onRoomLeft: () => {
-    state.roomId = null;
-    state.playing = false;
-    clearRemotePlayers();
-  },
-
-  onRoomState: (data) => {
-    if (data.players) {
-      const activeIds = new Set();
-
-      data.players.forEach((p) => {
-        if (p.id !== multiplayer.id) {
-          activeIds.add(p.id);
-          addOrUpdateRemotePlayer(p);
-        }
-      });
-
-      for (const id of remotePlayers.keys()) {
-        if (!activeIds.has(id)) removeRemotePlayer(id);
-      }
-    }
-  },
-
-  onPlayerMoved: (data) => {
-    addOrUpdateRemotePlayer(data);
-  },
-
-  onPlayerStats: (data) => {
-    const remote = remotePlayers.get(data.id);
-    if (remote) remote.health = data.health;
-  },
-
-  onOnlineCount: (count) => {
-    ui.menuStatus.dataset.online = String(count);
-  },
-
-  onLobbyRooms: () => {},
-
-  onGameStart: () => {
-    showToast('Игрок найден! Выживайте вместе.');
-  },
-
-  onGameEvent: (data) => {
-    if (data.playerId !== multiplayer.id) {
-      if (data.type === 'day:changed') {
-        showToast(`${data.nickname}: наступил новый день.`);
-      }
-    }
-  },
-
-  onChatMessage: addChatMessage,
-
-  onChatLobby: addChatMessage,
-
-  onChatSystem: (data) => addSystemMessage(data.text)
-});
-
-multiplayer.connect();
-
-function addOrUpdateRemotePlayer(data) {
-  if (!data || data.id === multiplayer.id) return;
-
-  let remote = remotePlayers.get(data.id);
-
-  if (!remote) {
-    const group = new THREE.Group();
-
-    const body = box(
-      group, 0, 1, 0, 0.7, 1.1, 0.45, mat(0x62a9a0)
+  // Окна
+  for (const wx of [-3.3, 3.3]) {
+    const windowMesh = makeBox(
+      1.45, 1.35, 0.12,
+      0x172c39,
+      wx, 3.3, z + 4.62
     );
 
-    const head = new THREE.Mesh(
-      new THREE.SphereGeometry(0.3, 12, 10),
-      mat(0xe0b18a)
-    );
-
-    head.position.y = 1.8;
-    group.add(head);
-
-    const label = document.createElement('div');
-    label.className = 'player-label';
-    label.textContent = data.nickname || 'Игрок';
-    label.style.cssText =
-      'position:fixed;left:-10000px;top:-10000px;pointer-events:none;';
-
-    document.body.appendChild(label);
-    scene.add(group);
-
-    remote = {
-      group,
-      body,
-      label,
-      target: new THREE.Vector3(
-        Number(data.x) || 0,
-        0,
-        Number(data.z) || 0
-      ),
-      rotation: Number(data.rotation) || 0,
-      health: data.health ?? 100
-    };
-
-    remotePlayers.set(data.id, remote);
+    windowMesh.material.emissive = new THREE.Color(0x111d25);
   }
 
-  remote.label.textContent = data.nickname || 'Игрок';
+  // Крыльцо
+  makeBox(3.6, 0.25, 2, 0x594737, 0, 0.12, z + 5.2);
 
-  remote.target.set(
-    Number(data.x) || 0,
-    Number(data.y) || 0,
-    Number(data.z) || 0
+  // Забор
+  for (let i = -8; i <= 8; i++) {
+    if (Math.abs(i) < 3) continue;
+
+    makeBox(0.18, 1.1, 0.2, 0x594b3b, i * 0.8, 0.55, z + 8.2);
+  }
+
+  makeBox(15, 0.15, 0.18, 0x594b3b, 0, 0.75, z + 8.2);
+}
+
+function createTrees() {
+  const positions = [
+    [-15, -5], [-19, -15], [-16, -25], [-9, -30],
+    [15, -7], [18, -19], [14, -28], [23, -11],
+    [-21, 5], [-25, 14], [-15, 20], [18, 7],
+    [25, 15], [23, 25], [-7, 26], [5, 25],
+    [-30, 0], [30, -4], [-27, -24], [28, -28]
+  ];
+
+  for (const [x, z] of positions) {
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.24, 0.35, 2.8, 7),
+      new THREE.MeshStandardMaterial({
+        color: 0x59402d,
+        roughness: 1
+      })
+    );
+
+    trunk.position.set(x, 1.4, z);
+    trunk.castShadow = true;
+    worldGroup.add(trunk);
+
+    const leaves = new THREE.Mesh(
+      new THREE.ConeGeometry(1.8, 4.8, 7),
+      new THREE.MeshStandardMaterial({
+        color: 0x243d2c,
+        roughness: 1
+      })
+    );
+
+    leaves.position.set(x, 4.1, z);
+    leaves.castShadow = true;
+    worldGroup.add(leaves);
+
+    const upperLeaves = new THREE.Mesh(
+      new THREE.ConeGeometry(1.25, 3.5, 7),
+      new THREE.MeshStandardMaterial({
+        color: 0x304d35,
+        roughness: 1
+      })
+    );
+
+    upperLeaves.position.set(x, 6, z);
+    upperLeaves.castShadow = true;
+    worldGroup.add(upperLeaves);
+  }
+}
+
+function createPath() {
+  const path = new THREE.Mesh(
+    new THREE.PlaneGeometry(4.5, 30),
+    new THREE.MeshStandardMaterial({
+      color: 0x6c6252,
+      roughness: 1
+    })
   );
 
-  remote.rotation = Number(data.rotation) || 0;
+  path.rotation.x = -Math.PI / 2;
+  path.position.set(0, 0.005, 4);
+  worldGroup.add(path);
+
+  // Камни вдоль дороги
+  for (let i = 0; i < 20; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const stone = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(0.15 + Math.random() * 0.18, 0),
+      new THREE.MeshStandardMaterial({
+        color: 0x6d7168,
+        roughness: 1
+      })
+    );
+
+    stone.position.set(
+      side * (2.7 + Math.random() * 1.8),
+      0.1,
+      12 - i * 1.1
+    );
+
+    stone.rotation.set(Math.random(), Math.random(), Math.random());
+    worldGroup.add(stone);
+  }
+}
+
+function createPlayer() {
+  player = new THREE.Group();
+  player.position.set(0, 0, 2);
+  scene.add(player);
+
+  const bodyMaterial = new THREE.MeshStandardMaterial({
+    color: 0x416d9c,
+    roughness: 0.85
+  });
+
+  playerBody = new THREE.Mesh(
+    new THREE.BoxGeometry(0.65, 1.05, 0.38),
+    bodyMaterial
+  );
+
+  playerBody.position.y = 1.05;
+  playerBody.castShadow = true;
+  player.add(playerBody);
+
+  const headMaterial = new THREE.MeshStandardMaterial({
+    color: 0xd6b28c,
+    roughness: 0.9
+  });
+
+  playerHead = new THREE.Mesh(
+    new THREE.BoxGeometry(0.46, 0.46, 0.46),
+    headMaterial
+  );
+
+  playerHead.position.y = 1.85;
+  playerHead.castShadow = true;
+  player.add(playerHead);
+
+  // Камера от первого лица
+  camera.position.set(0, 1.65, 0);
+  player.add(camera);
+}
+
+function resizeRenderer() {
+  if (!renderer || !camera) return;
+
+  const width = Math.max(1, window.innerWidth);
+  const height = Math.max(1, window.innerHeight);
+
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(width, height, false);
+}
+
+// ======================================================
+// ИГРОКИ И СЕТЕВАЯ СИНХРОНИЗАЦИЯ
+// ======================================================
+
+function makeRemotePlayer(id, name, index = 0) {
+  const group = new THREE.Group();
+
+  const color = REMOTE_COLORS[
+    Math.abs(String(id).split('').reduce((a, c) => a + c.charCodeAt(0), 0)) %
+    REMOTE_COLORS.length
+  ];
+
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.65, 1.05, 0.38),
+    new THREE.MeshStandardMaterial({ color, roughness: 0.85 })
+  );
+
+  body.position.y = 1.05;
+  body.castShadow = true;
+  group.add(body);
+
+  const head = new THREE.Mesh(
+    new THREE.BoxGeometry(0.46, 0.46, 0.46),
+    new THREE.MeshStandardMaterial({
+      color: 0xd6b28c,
+      roughness: 0.9
+    })
+  );
+
+  head.position.y = 1.85;
+  group.add(head);
+
+  const labelCanvas = document.createElement('canvas');
+  labelCanvas.width = 512;
+  labelCanvas.height = 128;
+
+  const ctx = labelCanvas.getContext('2d');
+
+  if (ctx) {
+    ctx.clearRect(0, 0, 512, 128);
+    ctx.font = 'bold 44px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#101010';
+    ctx.lineWidth = 6;
+    ctx.strokeText(String(name || 'Игрок').slice(0, 20), 256, 76);
+    ctx.fillText(String(name || 'Игрок').slice(0, 20), 256, 76);
+  }
+
+  const texture = new THREE.CanvasTexture(labelCanvas);
+  const label = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      depthTest: false
+    })
+  );
+
+  label.position.y = 2.5;
+  label.scale.set(2.3, 0.58, 1);
+  group.add(label);
+
+  group.position.set((index % 3) * 2 - 2, 0, -2 - Math.floor(index / 3) * 2);
+  remoteGroup.add(group);
+
+  return {
+    id,
+    name,
+    group,
+    target: group.position.clone(),
+    rotation: 0
+  };
 }
 
 function removeRemotePlayer(id) {
-  const remote = remotePlayers.get(id);
+  const remote = state.remotePlayers.get(id);
   if (!remote) return;
 
-  scene.remove(remote.group);
-  remote.label.remove();
-  remotePlayers.delete(id);
+  remoteGroup.remove(remote.group);
+
+  remote.group.traverse((object) => {
+    if (object.geometry) object.geometry.dispose();
+
+    if (object.material) {
+      if (Array.isArray(object.material)) {
+        object.material.forEach((material) => material.dispose());
+      } else {
+        object.material.dispose();
+      }
+    }
+  });
+
+  state.remotePlayers.delete(id);
 }
 
 function clearRemotePlayers() {
-  for (const id of remotePlayers.keys()) {
+  for (const id of [...state.remotePlayers.keys()]) {
     removeRemotePlayer(id);
   }
 }
 
-function showToast(message) {
-  ui.toast.textContent = message;
-  ui.toast.classList.remove('hidden');
+function updateRemotePlayer(data) {
+  if (!data) return;
 
-  clearTimeout(state.toastTimer);
+  const id = data.id || data.playerId || data.socketId;
+  if (!id || id === multiplayer.playerId) return;
 
-  state.toastTimer = setTimeout(() => {
-    ui.toast.classList.add('hidden');
-  }, 2600);
-}
+  const pos = data.position || data;
+  const x = Number(pos.x);
+  const y = Number(pos.y);
+  const z = Number(pos.z);
 
-function addSystemMessage(text) {
-  addChatMessage({
-    nickname: 'СИСТЕМА',
-    text,
-    time: Date.now()
-  });
-}
+  if (![x, y, z].every(Number.isFinite)) return;
 
-function addChatMessage(message) {
-  const row = document.createElement('div');
-  row.className = 'chat-message';
+  let remote = state.remotePlayers.get(id);
 
-  const name = document.createElement('strong');
-  name.textContent = `${message.nickname || 'Игрок'}: `;
-
-  const text = document.createElement('span');
-  text.textContent = message.text || '';
-
-  row.append(name, text);
-  ui.chatMessages.appendChild(row);
-
-  while (ui.chatMessages.children.length > 60) {
-    ui.chatMessages.firstElementChild.remove();
-  }
-
-  ui.chatMessages.scrollTop = ui.chatMessages.scrollHeight;
-}
-
-function openPanel(id) {
-  $(id).classList.remove('hidden');
-}
-
-function closePanel(id) {
-  $(id).classList.add('hidden');
-}
-
-document.querySelectorAll('[data-close]').forEach((button) => {
-  button.addEventListener('click', () => {
-    closePanel(button.dataset.close);
-  });
-});
-
-$('playButton').addEventListener('click', () => {
-  ui.roomPicker.classList.remove('hidden');
-  ui.playButton.classList.add('hidden');
-
-  const nickname = ui.nickname.value.trim().slice(0, 20);
-
-  if (nickname) {
-    multiplayer.setNickname(nickname);
-  }
-});
-
-$('backButton').addEventListener('click', () => {
-  ui.roomPicker.classList.add('hidden');
-  ui.playButton.classList.remove('hidden');
-});
-
-document.querySelectorAll('[data-room]').forEach((button) => {
-  button.addEventListener('click', () => {
-    const nickname = ui.nickname.value.trim().slice(0, 20);
-
-    if (!nickname) {
-      showToast('Сначала введи никнейм.');
-      return;
-    }
-
-    multiplayer.setNickname(nickname);
-    multiplayer.joinRoom(button.dataset.room);
-  });
-});
-
-$('leaveButton').addEventListener('click', () => {
-  multiplayer.leaveRoom();
-
-  state.playing = false;
-  ui.hud.classList.add('hidden');
-  ui.chatPanel.classList.add('hidden');
-  ui.touchControls.classList.add('hidden');
-  ui.crosshair.classList.add('hidden');
-  ui.menu.classList.remove('hidden');
-  ui.roomPicker.classList.add('hidden');
-  ui.playButton.classList.remove('hidden');
-
-  closePanel('inventoryPanel');
-  closePanel('shopPanel');
-});
-
-$('inventoryButton').addEventListener('click', () => {
-  renderInventory();
-  openPanel('inventoryPanel');
-});
-
-$('shopButton').addEventListener('click', () => {
-  renderShop();
-  openPanel('shopPanel');
-});
-
-ui.chatForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-
-  const text = ui.chatInput.value.trim();
-
-  if (!text) return;
-
-  multiplayer.sendChat(text);
-  ui.chatInput.value = '';
-});
-
-const shopItems = [
-  { name: 'Удочка', price: 1200 },
-  { name: 'Костёр', price: 900 },
-  { name: 'Зажигалка', price: 350 },
-  { name: 'Топор', price: 1500 },
-  { name: 'Фонарик', price: 700 },
-  { name: 'Аптечка', price: 800 },
-  { name: 'Кровать', price: 1000 },
-  { name: 'Консервы', price: 250 },
-  { name: 'Вода', price: 150 },
-  { name: 'Дерево', price: 500 },
-  { name: 'Камень', price: 100 }
-];
-
-function renderInventory() {
-  ui.inventoryList.replaceChildren();
-
-  for (const [name, count] of Object.entries(state.inventory)) {
-    const row = document.createElement('div');
-    row.className = 'item-row';
-
-    const label = document.createElement('span');
-    label.textContent = `${name}: ${count}`;
-
-    row.appendChild(label);
-    ui.inventoryList.appendChild(row);
-  }
-}
-
-function renderShop() {
-  ui.shopList.replaceChildren();
-  ui.moneyLabel.textContent = `${state.money} ₽`;
-
-  for (const item of shopItems) {
-    const row = document.createElement('div');
-    row.className = 'item-row';
-
-    const label = document.createElement('span');
-    label.textContent = `${item.name} — ${item.price} ₽`;
-
-    const button = document.createElement('button');
-    button.textContent = 'Купить';
-
-    button.addEventListener('click', () => {
-      if (state.money < item.price) {
-        showToast('Не хватает денег!');
-        return;
-      }
-
-      state.money -= item.price;
-      state.inventory[item.name] =
-        (state.inventory[item.name] || 0) + 1;
-
-      renderShop();
-      showToast(`Куплено: ${item.name}`);
-      multiplayer.sendGameEvent('item:collected', {
-        item: item.name
-      });
-    });
-
-    row.append(label, button);
-    ui.shopList.appendChild(row);
-  }
-}
-
-$('eatButton').addEventListener('click', () => {
-  if ((state.inventory['Консервы'] || 0) <= 0) {
-    showToast('Нет еды!');
-    return;
-  }
-
-  state.inventory['Консервы']--;
-  state.hunger = Math.min(100, state.hunger + 35);
-
-  updateStats();
-  renderInventory();
-  showToast('Ты поел.');
-});
-
-$('drinkButton').addEventListener('click', () => {
-  if ((state.inventory['Вода'] || 0) <= 0) {
-    showToast('Нет воды!');
-    return;
-  }
-
-  state.inventory['Вода']--;
-  state.thirst = Math.min(100, state.thirst + 35);
-
-  updateStats();
-  renderInventory();
-  showToast('Ты попил воды.');
-});
-
-function updateStats() {
-  ui.healthBar.style.width = `${state.health}%`;
-  ui.hungerBar.style.width = `${state.hunger}%`;
-  ui.thirstBar.style.width = `${state.thirst}%`;
-  ui.staminaBar.style.width = `${state.stamina}%`;
-}
-
-function formatTime(minutes) {
-  const h = Math.floor(minutes / 60) % 24;
-  const m = Math.floor(minutes % 60);
-
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
-function updateClock(delta) {
-  state.minutes += delta * 60;
-
-  if (state.minutes >= 1440) {
-    state.minutes = 0;
-    state.day++;
-
-    if (state.day > 14) {
-      state.day = 14;
-      showToast('14 дней пройдено! Ты выжил!');
-    } else {
-      showToast(`Наступил день ${state.day}!`);
-      multiplayer.sendGameEvent('day:changed', {
-        day: state.day
-      });
-    }
-  }
-
-  ui.dayLabel.textContent = `День ${state.day} / 14`;
-  ui.timeLabel.textContent = formatTime(state.minutes);
-
-  const hour = Math.floor(state.minutes / 60);
-
-  if (hour >= 20 || hour < 6) {
-    scene.background.set(0x101b31);
-    scene.fog.color.set(0x101b31);
-    sun.intensity = 0.25;
-  } else {
-    scene.background.set(0x9bb7c7);
-    scene.fog.color.set(0x9bb7c7);
-    sun.intensity = 2.2;
-  }
-}
-
-function updateSurvival(delta) {
-  state.hunger = Math.max(0, state.hunger - delta * 0.12);
-  state.thirst = Math.max(0, state.thirst - delta * 0.2);
-
-  if (state.hunger <= 0 || state.thirst <= 0) {
-    state.health = Math.max(0, state.health - delta * 2);
-  }
-
-  if (state.health <= 0) {
-    showToast('Ты потерял сознание. Начни заново.');
-    state.health = 50;
-    state.hunger = 50;
-    state.thirst = 50;
-    player.position.set(0, 0, 3);
-  }
-
-  if (state.running && (Math.abs(state.joyX) > 0.1 ||
-      Math.abs(state.joyY) > 0.1 ||
-      state.keys.KeyW || state.keys.KeyA ||
-      state.keys.KeyS || state.keys.KeyD)) {
-    state.stamina = Math.max(0, state.stamina - delta * 22);
-  } else {
-    state.stamina = Math.min(100, state.stamina + delta * 13);
-  }
-
-  if (state.stamina <= 0) state.running = false;
-
-  updateStats();
-}
-
-function nearestTarget() {
-  const targets = [
-    { object: trader, type: 'trader', distance: 0 },
-    { object: house, type: 'house', distance: 0 },
-    { object: basementEntrance, type: 'basement', distance: 0 },
-    ...resourceObjects
-      .filter((o) => !o.userData.collected)
-      .map((o) => ({ object: o, type: 'resource', distance: 0 }))
-  ];
-
-  let nearest = null;
-  let bestDistance = 3.5;
-
-  for (const target of targets) {
-    const distance = player.position.distanceTo(
-      target.object.position
+  if (!remote) {
+    remote = makeRemotePlayer(
+      id,
+      data.name || data.username || 'Игрок',
+      state.remotePlayers.size
     );
 
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      nearest = target;
-    }
+    state.remotePlayers.set(id, remote);
   }
 
-  return nearest;
+  remote.target.set(x, Math.max(0, y), z);
+  remote.rotation = Number(data.rotation) || 0;
+}
+
+function syncRoomPlayers(data) {
+  const players = Array.isArray(data?.players) ? data.players : [];
+
+  updatePlayerCount(players.length || 1);
+
+  const seen = new Set();
+
+  players.forEach((entry, index) => {
+    const id = entry.id || entry.playerId || entry.socketId;
+    if (!id || id === multiplayer.playerId) return;
+
+    seen.add(id);
+
+    updateRemotePlayer({
+      ...entry,
+      id,
+      x: entry.x ?? entry.position?.x ?? (index * 2),
+      y: entry.y ?? entry.position?.y ?? 0,
+      z: entry.z ?? entry.position?.z ?? -2
+    });
+  });
+
+  for (const id of [...state.remotePlayers.keys()]) {
+    if (!seen.has(id)) removeRemotePlayer(id);
+  }
+}
+
+// ======================================================
+// ПОДКЛЮЧЕНИЕ К СЕРВЕРУ
+// ======================================================
+
+function connectMultiplayer() {
+  setConnectionStatus('Подключение...', false);
+  multiplayer.connect();
+}
+
+multiplayer.on('connection:status', (data) => {
+  if (data?.connected) {
+    setConnectionStatus('Онлайн', true);
+  } else {
+    setConnectionStatus('Переподключение...', false);
+  }
+});
+
+multiplayer.on('connection:error', (data) => {
+  setConnectionStatus('Нет соединения', false);
+  notify(data?.message || 'Не удалось подключиться к серверу.');
+});
+
+multiplayer.on('server:ready', () => {
+  setConnectionStatus('Онлайн', true);
+});
+
+multiplayer.on('lobby:rooms', (data) => {
+  const rooms = data?.rooms || data || {};
+
+  for (const roomId of Object.keys(ROOM_NAMES)) {
+    const room = rooms[roomId];
+    if (!room) continue;
+
+    const count = Number(
+      room.count ??
+      room.playersCount ??
+      room.playerCount ??
+      (Array.isArray(room.players) ? room.players.length : 0)
+    );
+
+    const capacity = Number(room.capacity || room.maxPlayers || (
+      roomId.startsWith('coop') ? 2 : 1
+    ));
+
+    const element = $(`count-${roomId}`);
+
+    if (element) {
+      element.textContent = `${count} / ${capacity}`;
+      element.style.color = count >= capacity ? '#f87171' : '#4ade80';
+    }
+
+    const button = document.querySelector(`[data-room="${roomId}"]`);
+
+    if (button) {
+      button.classList.toggle('room-full', count >= capacity);
+      button.setAttribute(
+        'aria-label',
+        `${ROOM_NAMES[roomId]}, игроков ${count} из ${capacity}`
+      );
+    }
+  }
+});
+
+multiplayer.on('room:joined', (data) => {
+  state.roomId = data?.roomId || data?.room || state.roomId;
+
+  showScreen('waiting');
+
+  const title = $('waitingTitle');
+  if (title) {
+    title.textContent = ROOM_NAMES[state.roomId] || 'Ты вошёл в домик';
+  }
+
+  const solo = state.roomId?.startsWith('solo');
+
+  const message = $('waitingMessage');
+  if (message) {
+    message.textContent = solo
+      ? 'Игра начнётся через 10 секунд.'
+      : 'Ожидаем второго игрока...';
+  }
+
+  const countdown = $('countdownNumber');
+  if (countdown) countdown.textContent = solo ? '10' : '…';
+
+  notify('Ты вошёл в комнату!');
+});
+
+multiplayer.on('room:state', (data) => {
+  syncRoomPlayers(data);
+});
+
+multiplayer.on('room:left', () => {
+  state.roomId = null;
+  state.countdown = null;
+  clearRemotePlayers();
+
+  if (state.screen === 'waiting') {
+    showScreen('lobby');
+  }
+});
+
+multiplayer.on('room:error', (data) => {
+  notify(data?.message || 'Не удалось войти в комнату.');
+});
+
+multiplayer.on('game:waiting', (data) => {
+  const message = $('waitingMessage');
+  const countdown = $('countdownNumber');
+
+  if (message) {
+    message.textContent = data?.message || 'Ожидаем второго игрока...';
+  }
+
+  if (countdown) countdown.textContent = '…';
+});
+
+multiplayer.on('game:countdown', (data) => {
+  const seconds = Number(data?.seconds ?? data?.countdown ?? 10);
+  state.countdown = seconds;
+
+  const countdown = $('countdownNumber');
+  const message = $('waitingMessage');
+
+  if (countdown) countdown.textContent = String(Math.max(0, seconds));
+
+  if (message) {
+    message.textContent = 'Игра скоро начнётся!';
+  }
+});
+
+multiplayer.on('game:start', (data) => {
+  state.roomId = data?.roomId || data?.room || state.roomId;
+  state.started = true;
+  state.playing = true;
+  state.paused = false;
+  state.day = 1;
+  state.minutes = 8 * 60;
+  state.clockAccumulator = 0;
+
+  updateClockUI();
+  startGame();
+});
+
+multiplayer.on('player:moved', (data) => {
+  updateRemotePlayer(data);
+});
+
+multiplayer.on('player:joined', (data) => {
+  if (data) updateRemotePlayer(data);
+});
+
+multiplayer.on('player:left', (data) => {
+  const id = data?.id || data?.playerId || data?.socketId;
+  if (id) removeRemotePlayer(id);
+
+  updatePlayerCount(Math.max(1, state.remotePlayers.size + 1));
+});
+
+multiplayer.on('chat:message', (data) => {
+  addChatMessage(data?.name || 'Игрок', data?.message || '');
+});
+
+multiplayer.on('chat:error', (data) => {
+  notify(data?.message || 'Не удалось отправить сообщение.');
+});
+
+// ======================================================
+// ЛОББИ И ЗАПУСК
+// ======================================================
+
+function enterLobby() {
+  showScreen('lobby');
+  connectMultiplayer();
+}
+
+function joinRoom(roomId) {
+  if (!multiplayer.connected) {
+    notify('Подожди подключения к серверу.');
+    connectMultiplayer();
+    return;
+  }
+
+  if (!ROOM_NAMES[roomId]) {
+    notify('Неизвестная комната.');
+    return;
+  }
+
+  state.roomId = roomId;
+  multiplayer.joinRoom(roomId);
+}
+
+function leaveRoom() {
+  multiplayer.leaveRoom();
+
+  state.roomId = null;
+  state.playing = false;
+  state.paused = false;
+  state.cutscene = false;
+  state.started = false;
+
+  clearRemotePlayers();
+  closePause();
+
+  showScreen('lobby');
+}
+
+function startGame() {
+  initWorld();
+
+  state.playing = true;
+  state.paused = false;
+  state.cutscene = true;
+  state.cutsceneStep = 0;
+  state.cutsceneElapsed = 0;
+  state.yaw = 0;
+  state.pitch = 0;
+  state.verticalVelocity = 0;
+  state.grounded = true;
+
+  if (player) {
+    player.position.set(0, 0, 3);
+    player.rotation.y = 0;
+  }
+
+  if (playerBody) playerBody.visible = true;
+  if (playerHead) playerHead.visible = true;
+
+  showScreen('game');
+  showCutscene();
+
+  setObjective('Осмотрись вокруг');
+  setGameStatus('Родители привезли тебя домой...');
+  updateClockUI();
+  updatePlayerCount(state.remotePlayers.size + 1);
+
+  if (renderer) {
+    renderer.setAnimationLoop(null);
+  }
+
+  if (!animationFrame) {
+    animationFrame = requestAnimationFrame(gameLoop);
+  }
+}
+
+// ======================================================
+// КАТ-СЦЕНА
+// ======================================================
+
+const CUTSCENE_STEPS = [
+  {
+    duration: 4,
+    text: 'Родители привезли тебя домой...',
+    carX: -0.5
+  },
+  {
+    duration: 4,
+    text: 'Ты пытаешься открыть дверь. Она заперта.',
+    carX: 0
+  },
+  {
+    duration: 4,
+    text: 'Ты оборачиваешься, чтобы позвать родителей...',
+    carX: 0.5
+  },
+  {
+    duration: 3,
+    text: 'Машина уже уезжает. Ты остался один.',
+    carX: 1
+  }
+];
+
+function showCutscene() {
+  const overlay = $('cutsceneOverlay');
+  const title = $('dayTitle');
+
+  if (overlay) overlay.classList.add('active');
+  if (title) title.classList.remove('visible');
+
+  const visual = $('cutsceneVisual');
+  if (visual) {
+    visual.style.filter = 'brightness(0.8)';
+  }
+
+  setCutsceneText(CUTSCENE_STEPS[0].text);
+}
+
+function advanceCutscene(delta) {
+  if (!state.cutscene || state.paused) return;
+
+  state.cutsceneElapsed += delta;
+
+  const current = CUTSCENE_STEPS[state.cutsceneStep];
+
+  if (current) {
+    setCutsceneText(current.text);
+
+    const car = document.querySelector('.cutscene-car');
+
+    if (car) {
+      const progress = Math.min(1, state.cutsceneElapsed / current.duration);
+
+      if (state.cutsceneStep === 3) {
+        car.style.transform = `translateX(${progress * 100}vw)`;
+      } else if (state.cutsceneStep === 0) {
+        car.style.transform = `translateX(${(1 - progress) * -35}vw)`;
+      } else if (state.cutsceneStep === 1) {
+        car.style.transform = 'translateX(0)';
+      } else {
+        car.style.transform = `translateX(${progress * 10}vw)`;
+      }
+    }
+
+    if (state.cutsceneElapsed >= current.duration) {
+      state.cutsceneStep++;
+      state.cutsceneElapsed = 0;
+
+      if (state.cutsceneStep >= CUTSCENE_STEPS.length) {
+        finishCutscene();
+      }
+    }
+  }
+}
+
+function finishCutscene() {
+  state.cutscene = false;
+
+  const overlay = $('cutsceneOverlay');
+  const title = $('dayTitle');
+
+  if (overlay) overlay.classList.remove('active');
+  if (title) title.classList.add('visible');
+
+  state.playing = true;
+  setObjective('Осмотри дом и попробуй открыть дверь');
+  setGameStatus('ДЕНЬ 1 — Ты остался один.');
+
+  notify('ДЕНЬ 1. История начинается.', 3500);
+
+  if (player) {
+    player.position.set(0, 0, 3);
+  }
+}
+
+function skipCutscene() {
+  if (!state.cutscene) return;
+
+  state.cutsceneStep = CUTSCENE_STEPS.length;
+  finishCutscene();
+}
+
+// ======================================================
+// УПРАВЛЕНИЕ: ДЖОЙСТИК, КАМЕРА, КЛАВИАТУРА
+// ======================================================
+
+function setupJoystick() {
+  const joystick = $('movementJoystick');
+  const stick = $('movementStick');
+
+  if (!joystick || !stick) return;
+
+  let pointerId = null;
+  let centerX = 0;
+  let centerY = 0;
+  let maxDistance = 0;
+
+  function moveStick(event) {
+    if (pointerId !== event.pointerId) return;
+
+    const dx = event.clientX - centerX;
+    const dy = event.clientY - centerY;
+    const distance = Math.hypot(dx, dy);
+    const scale = distance > maxDistance ? maxDistance / distance : 1;
+
+    const limitedX = dx * scale;
+    const limitedY = dy * scale;
+
+    state.joystickX = limitedX / maxDistance;
+    state.joystickY = limitedY / maxDistance;
+
+    stick.style.transform = `translate(${limitedX}px, ${limitedY}px)`;
+  }
+
+  function stopStick(event) {
+    if (pointerId !== event.pointerId) return;
+
+    pointerId = null;
+    state.joystickX = 0;
+    state.joystickY = 0;
+    stick.style.transform = 'translate(0, 0)';
+  }
+
+  joystick.addEventListener('pointerdown', (event) => {
+    if (!state.playing || state.paused || state.cutscene) return;
+
+    event.preventDefault();
+
+    pointerId = event.pointerId;
+
+    const rect = joystick.getBoundingClientRect();
+    centerX = rect.left + rect.width / 2;
+    centerY = rect.top + rect.height / 2;
+    maxDistance = rect.width * 0.32;
+
+    joystick.setPointerCapture?.(event.pointerId);
+    moveStick(event);
+  });
+
+  joystick.addEventListener('pointermove', moveStick);
+  joystick.addEventListener('pointerup', stopStick);
+  joystick.addEventListener('pointercancel', stopStick);
+  joystick.addEventListener('lostpointercapture', () => {
+    pointerId = null;
+    state.joystickX = 0;
+    state.joystickY = 0;
+    stick.style.transform = 'translate(0, 0)';
+  });
+}
+
+function setupLookControls() {
+  const lookArea = $('lookArea');
+  const canvas = $('gameCanvas');
+
+  function beginLook(event) {
+    if (!state.playing || state.paused || state.cutscene) return;
+
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+    state.lookPointerId = event.pointerId;
+    state.lookLastX = event.clientX;
+    state.lookLastY = event.clientY;
+
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch (_) {}
+
+    event.preventDefault();
+  }
+
+  function moveLook(event) {
+    if (state.lookPointerId !== event.pointerId) return;
+    if (state.paused || state.cutscene) return;
+
+    const dx = event.clientX - state.lookLastX;
+    const dy = event.clientY - state.lookLastY;
+
+    state.lookLastX = event.clientX;
+    state.lookLastY = event.clientY;
+
+    state.yaw -= dx * state.sensitivity * 0.005;
+    state.pitch -= dy * state.sensitivity * 0.004;
+
+    state.pitch = THREE.MathUtils.clamp(
+      state.pitch,
+      -Math.PI / 2.5,
+      Math.PI / 2.5
+    );
+
+    if (player) player.rotation.y = state.yaw;
+    camera.rotation.x = state.pitch;
+
+    event.preventDefault();
+  }
+
+  function endLook(event) {
+    if (state.lookPointerId !== event.pointerId) return;
+    state.lookPointerId = null;
+  }
+
+  for (const target of [lookArea, canvas]) {
+    if (!target) continue;
+
+    target.addEventListener('pointerdown', beginLook);
+    target.addEventListener('pointermove', moveLook);
+    target.addEventListener('pointerup', endLook);
+    target.addEventListener('pointercancel', endLook);
+  }
+}
+
+function setupKeyboard() {
+  window.addEventListener('keydown', (event) => {
+    if (
+      ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(event.key)
+    ) {
+      event.preventDefault();
+    }
+
+    state.keys.add(event.key.toLowerCase());
+
+    if (event.key === 'Escape') {
+      if (state.paused) {
+        closePause();
+      } else if (state.screen === 'game' && !state.cutscene) {
+        openPause();
+      }
+    }
+
+    if (
+      event.code === 'Space' &&
+      state.playing &&
+      !state.paused &&
+      !state.cutscene
+    ) {
+      jump();
+    }
+
+    if (
+      event.key.toLowerCase() === 'e' &&
+      state.playing &&
+      !state.paused &&
+      !state.cutscene
+    ) {
+      interact();
+    }
+  });
+
+  window.addEventListener('keyup', (event) => {
+    state.keys.delete(event.key.toLowerCase());
+  });
+
+  window.addEventListener('blur', () => {
+    state.keys.clear();
+    state.joystickX = 0;
+    state.joystickY = 0;
+  });
+}
+
+function jump() {
+  if (!state.playing || state.paused || state.cutscene) return;
+  if (!state.grounded) return;
+
+  state.verticalVelocity = state.jumpPower;
+  state.grounded = false;
 }
 
 function interact() {
-  const target = nearestTarget();
+  if (!state.playing || state.paused || state.cutscene) return;
 
-  if (!target) {
-    showToast('Здесь нечего делать.');
+  // Дверь находится перед домом, в направлении -Z.
+  const doorPosition = new THREE.Vector3(0, 0, -8.3);
+  const distance = player.position.distanceTo(doorPosition);
+
+  if (distance < 5.5) {
+    setObjective('Дверь заперта. Нужно найти другой способ попасть внутрь.');
+    setGameStatus('Дверь не открывается...');
+    notify('Дверь заперта. Похоже, ключа у тебя нет.');
     return;
   }
 
-  if (target.type === 'trader') {
-    renderShop();
-    openPanel('shopPanel');
-    return;
-  }
-
-  if (target.type === 'basement') {
-    state.basement = !state.basement;
-
-    if (state.basement) {
-      player.position.set(8, 0, -8);
-      basementDoor.rotation.y = -0.8;
-      showToast('Ты вошёл в подвал.');
-    } else {
-      player.position.set(8, 0, -5);
-      basementDoor.rotation.y = 0;
-      showToast('Ты вышел из подвала.');
-    }
-
-    return;
-  }
-
-  if (target.type === 'house') {
-    showToast('Дом заперт. Найди способ попасть внутрь.');
-    return;
-  }
-
-  if (target.type === 'resource') {
-    const obj = target.object;
-
-    if (obj.userData.collected) return;
-
-    obj.userData.collected = true;
-    state.inventory[obj.userData.type] =
-      (state.inventory[obj.userData.type] || 0) + 1;
-
-    scene.remove(obj);
-
-    showToast(`Собрано: ${obj.userData.type}`);
-    multiplayer.sendGameEvent('item:collected', {
-      item: obj.userData.type
-    });
-
-    return;
-  }
+  setObjective('Осмотри дом и попробуй открыть дверь');
+  notify('Здесь пока нечего использовать.');
 }
-
-$('interactButton').addEventListener('click', interact);
-
-$('jumpButton').addEventListener('pointerdown', (event) => {
-  event.preventDefault();
-
-  if (state.onGround && state.playing) {
-    state.jumpVelocity = 6.5;
-    state.onGround = false;
-    state.jumping = true;
-  }
-});
-
-$('runButton').addEventListener('pointerdown', () => {
-  state.running = true;
-});
-
-$('runButton').addEventListener('pointerup', () => {
-  state.running = false;
-});
-
-$('runButton').addEventListener('pointercancel', () => {
-  state.running = false;
-});
-
-$('rotateContinue').addEventListener('click', () => {
-  ui.rotateMessage.classList.add('hidden');
-});
-
-// Клавиатура для компьютера.
-window.addEventListener('keydown', (event) => {
-  state.keys[event.code] = true;
-
-  if (event.code === 'Space' && state.onGround) {
-    state.jumpVelocity = 6.5;
-    state.onGround = false;
-  }
-
-  if (event.code === 'KeyE' && !event.repeat) interact();
-
-  if (event.code === 'KeyI' && !event.repeat) {
-    renderInventory();
-    openPanel('inventoryPanel');
-  }
-
-  if (event.code === 'KeyB' && !event.repeat) {
-    renderShop();
-    openPanel('shopPanel');
-  }
-});
-
-window.addEventListener('keyup', (event) => {
-  state.keys[event.code] = false;
-});
-
-// Сенсорный джойстик.
-const joystickArea = $('joystickArea');
-const joystickKnob = $('joystickKnob');
-
-let joystickPointer = null;
-
-function resetJoystick() {
-  state.joyX = 0;
-  state.joyY = 0;
-  joystickPointer = null;
-  joystickKnob.style.transform = 'translate(0px, 0px)';
-}
-
-joystickArea.addEventListener('pointerdown', (event) => {
-  event.preventDefault();
-  joystickPointer = event.pointerId;
-  joystickArea.setPointerCapture(event.pointerId);
-  moveJoystick(event);
-});
-
-joystickArea.addEventListener('pointermove', (event) => {
-  if (event.pointerId !== joystickPointer) return;
-  moveJoystick(event);
-});
-
-joystickArea.addEventListener('pointerup', resetJoystick);
-joystickArea.addEventListener('pointercancel', resetJoystick);
-
-function moveJoystick(event) {
-  const rect = joystickArea.getBoundingClientRect();
-
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
-
-  let dx = event.clientX - cx;
-  let dy = event.clientY - cy;
-
-  const max = rect.width * 0.32;
-  const length = Math.hypot(dx, dy);
-
-  if (length > max) {
-    dx = dx / length * max;
-    dy = dy / length * max;
-  }
-
-  state.joyX = dx / max;
-  state.joyY = dy / max;
-
-  joystickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
-}
-
-// Перетаскивание пальцем по правой стороне экрана для поворота камеры.
-let lookPointer = null;
-let lastLookX = 0;
-let lastLookY = 0;
-let cameraYaw = 0;
-let cameraPitch = 0.25;
-
-renderer.domElement.addEventListener('pointerdown', (event) => {
-  if (event.pointerType === 'mouse') {
-    if (event.button === 0) {
-      lookPointer = event.pointerId;
-      lastLookX = event.clientX;
-      lastLookY = event.clientY;
-    }
-    return;
-  }
-
-  if (event.clientX > window.innerWidth * 0.35) {
-    lookPointer = event.pointerId;
-    lastLookX = event.clientX;
-    lastLookY = event.clientY;
-  }
-});
-
-renderer.domElement.addEventListener('pointermove', (event) => {
-  if (event.pointerId !== lookPointer) return;
-
-  const dx = event.clientX - lastLookX;
-  const dy = event.clientY - lastLookY;
-
-  lastLookX = event.clientX;
-  lastLookY = event.clientY;
-
-  cameraYaw -= dx * 0.006;
-  cameraPitch = THREE.MathUtils.clamp(
-    cameraPitch + dy * 0.004,
-    -0.15,
-    0.8
-  );
-});
-
-window.addEventListener('pointerup', (event) => {
-  if (event.pointerId === lookPointer) lookPointer = null;
-});
-
-window.addEventListener('pointercancel', (event) => {
-  if (event.pointerId === lookPointer) lookPointer = null;
-});
-
-let cameraForward = new THREE.Vector3();
-let cameraRight = new THREE.Vector3();
 
 function updateMovement(delta) {
-  if (!state.playing) return;
+  if (!player || !state.playing || state.paused || state.cutscene) return;
 
-  const forward =
-    (state.keys.KeyW || state.keys.ArrowUp ? 1 : 0) -
-    (state.keys.KeyS || state.keys.ArrowDown ? 1 : 0) -
-    state.joyY;
+  let forward = 0;
+  let strafe = 0;
 
-  const right =
-    (state.keys.KeyD || state.keys.ArrowRight ? 1 : 0) -
-    (state.keys.KeyA || state.keys.ArrowLeft ? 1 : 0) +
-    state.joyX;
+  if (state.keys.has('w') || state.keys.has('arrowup')) forward += 1;
+  if (state.keys.has('s') || state.keys.has('arrowdown')) forward -= 1;
+  if (state.keys.has('a') || state.keys.has('arrowleft')) strafe -= 1;
+  if (state.keys.has('d') || state.keys.has('arrowright')) strafe += 1;
 
-  cameraForward.set(-Math.sin(cameraYaw), 0, -Math.cos(cameraYaw));
-  cameraRight.set(Math.cos(cameraYaw), 0, -Math.sin(cameraYaw));
+  forward += -state.joystickY;
+  strafe += state.joystickX;
 
-  const direction = new THREE.Vector3();
+  const length = Math.hypot(forward, strafe);
 
-  direction.addScaledVector(cameraForward, forward);
-  direction.addScaledVector(cameraRight, right);
+  if (length > 1) {
+    forward /= length;
+    strafe /= length;
+  }
 
-  if (direction.lengthSq() > 0.01) {
+  const direction = new THREE.Vector3(strafe, 0, -forward);
+
+  if (direction.lengthSq() > 0) {
     direction.normalize();
+    direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), state.yaw);
 
-    const speed =
-      state.running && state.stamina > 0 ? 7.5 : 4.5;
-
-    player.position.addScaledVector(direction, speed * delta);
-
-    player.rotation.y = Math.atan2(direction.x, direction.z);
-  }
-
-  // Простая физика прыжка.
-  if (!state.onGround) {
-    state.jumpVelocity -= 15 * delta;
-    player.position.y += state.jumpVelocity * delta;
-
-    if (player.position.y <= 0) {
-      player.position.y = 0;
-      state.jumpVelocity = 0;
-      state.onGround = true;
-      state.jumping = false;
-    }
-  }
-
-  // Ограничение территории.
-  player.position.x = THREE.MathUtils.clamp(
-    player.position.x, -85, 85
-  );
-
-  player.position.z = THREE.MathUtils.clamp(
-    player.position.z, -90, 80
-  );
-
-  const moving = direction.lengthSq() > 0.01;
-
-  playerLegs[0].rotation.x = moving
-    ? Math.sin(performance.now() * 0.012) * 0.5
-    : 0;
-
-  playerLegs[1].rotation.x = moving
-    ? -Math.sin(performance.now() * 0.012) * 0.5
-    : 0;
-
-  const now = performance.now();
-
-  if (now - state.lastNetworkUpdate > 50) {
-    state.lastNetworkUpdate = now;
-
-    multiplayer.sendMove(
-      player.position,
-      player.rotation.y,
-      !state.onGround ? 'jump' : moving
-        ? (state.running ? 'run' : 'walk')
-        : 'idle'
+    player.position.addScaledVector(
+      direction,
+      state.playerSpeed * delta
     );
   }
+
+  state.verticalVelocity -= 12 * delta;
+  player.position.y += state.verticalVelocity * delta;
+
+  if (player.position.y <= 0) {
+    player.position.y = 0;
+    state.verticalVelocity = 0;
+    state.grounded = true;
+  }
+
+  // Не даём игроку уходить бесконечно далеко от карты.
+  player.position.x = THREE.MathUtils.clamp(player.position.x, -48, 48);
+  player.position.z = THREE.MathUtils.clamp(player.position.z, -55, 45);
+
+  if (camera) {
+    camera.rotation.order = 'YXZ';
+    camera.rotation.y = 0;
+  }
 }
 
-const cameraTarget = new THREE.Vector3();
-
-function updateCamera(delta) {
-  const distance = 5.5;
-  const horizontal = Math.cos(cameraPitch) * distance;
-
-  const desiredPosition = new THREE.Vector3(
-    player.position.x + Math.sin(cameraYaw) * horizontal,
-    player.position.y + 2 + Math.sin(cameraPitch) * distance,
-    player.position.z + Math.cos(cameraYaw) * horizontal
-  );
-
-  camera.position.lerp(
-    desiredPosition,
-    1 - Math.exp(-7 * delta)
-  );
-
-  cameraTarget.set(
-    player.position.x,
-    player.position.y + 1.2,
-    player.position.z
-  );
-
-  camera.lookAt(cameraTarget);
-
-  // Перемещаем подписи игроков к их экранным позициям.
-  for (const remote of remotePlayers.values()) {
-    remote.group.position.lerp(remote.target, 1 - Math.exp(-10 * delta));
+function updateRemotePlayers(delta) {
+  for (const remote of state.remotePlayers.values()) {
+    remote.group.position.lerp(remote.target, Math.min(1, delta * 9));
     remote.group.rotation.y = remote.rotation;
+  }
+}
 
-    const projected = remote.group.position.clone();
-    projected.y += 2.5;
-    projected.project(camera);
+// ======================================================
+// ВРЕМЯ: 1 РЕАЛЬНАЯ СЕКУНДА = 1 ИГРОВАЯ МИНУТА
+// ======================================================
 
-    if (projected.z < 1) {
-      remote.label.style.left =
-        `${(projected.x * 0.5 + 0.5) * window.innerWidth}px`;
+function updateGameClock(delta) {
+  if (!state.playing || state.paused || state.cutscene) return;
 
-      remote.label.style.top =
-        `${(-projected.y * 0.5 + 0.5) * window.innerHeight}px`;
+  state.clockAccumulator += delta;
 
-      remote.label.style.transform = 'translate(-50%, -50%)';
-      remote.label.style.color = 'white';
-      remote.label.style.textShadow = '0 1px 4px black';
-    } else {
-      remote.label.style.left = '-10000px';
+  while (state.clockAccumulator >= 1) {
+    state.clockAccumulator -= 1;
+    state.minutes++;
+
+    if (state.minutes >= 24 * 60) {
+      state.minutes = 0;
+      state.day++;
+      setGameStatus(`Начался день ${state.day}.`);
+      setObjective(`День ${state.day}: продержись ещё сутки`);
+      notify(`ДЕНЬ ${state.day}`, 3000);
     }
   }
+
+  updateClockUI();
 }
 
-function updateHint() {
-  if (!state.playing) return;
+// ======================================================
+// СЕТЕВОЕ ОБНОВЛЕНИЕ
+// ======================================================
 
-  const target = nearestTarget();
+function updateNetwork(now) {
+  if (!state.playing || state.paused || state.cutscene || !player) return;
+  if (now - lastPositionSent < 80) return;
 
-  if (!target) {
-    ui.hint.textContent =
-      'WASD / джойстик — движение • E / ✋ — взаимодействие';
-    return;
+  lastPositionSent = now;
+
+  multiplayer.move(
+    {
+      x: player.position.x,
+      y: player.position.y,
+      z: player.position.z
+    },
+    state.yaw
+  );
+}
+
+// ======================================================
+// ПОЛНЫЙ ЭКРАН И ПОВОРОТ ЭКРАНА
+// ======================================================
+
+async function requestFullscreen() {
+  try {
+    const element = document.documentElement;
+
+    if (!document.fullscreenElement && element.requestFullscreen) {
+      await element.requestFullscreen();
+    }
+
+    if (screen.orientation?.lock) {
+      try {
+        await screen.orientation.lock('landscape');
+      } catch (_) {
+        // Некоторые браузеры запрещают блокировку ориентации.
+      }
+    }
+  } catch (error) {
+    console.warn('Полноэкранный режим недоступен:', error);
   }
 
-  if (target.type === 'trader') {
-    ui.hint.textContent = 'Торговец — нажми E или ✋, чтобы открыть магазин';
-  } else if (target.type === 'basement') {
-    ui.hint.textContent = 'Вход в подвал — нажми E или ✋';
-  } else if (target.type === 'house') {
-    ui.hint.textContent = 'Дом заперт — нажми E или ✋';
-  } else if (target.type === 'resource') {
-    ui.hint.textContent = `Собрать ${target.object.userData.type} — E или ✋`;
+  resizeRenderer();
+}
+
+function handleOrientation() {
+  const portrait = window.matchMedia('(orientation: portrait)').matches;
+
+  document.body.classList.toggle(
+    'portrait-device',
+    portrait
+  );
+
+  if (state.screen === 'game' && portrait) {
+    setGameStatus('Поверни телефон горизонтально');
   }
 }
 
-function animate(timestamp) {
-  requestAnimationFrame(animate);
+// ======================================================
+// ПАУЗА
+// ======================================================
 
-  const delta = state.lastTime
-    ? Math.min((timestamp - state.lastTime) / 1000, 0.05)
+function openPause() {
+  if (state.screen !== 'game' || state.cutscene) return;
+
+  state.paused = true;
+
+  const overlay = $('gamePauseOverlay');
+  if (overlay) overlay.classList.remove('hidden');
+
+  chatWasOpenBeforePause = $('chatPanel')?.classList.contains('open') || false;
+}
+
+function closePause() {
+  state.paused = false;
+
+  const overlay = $('gamePauseOverlay');
+  if (overlay) overlay.classList.add('hidden');
+}
+
+function exitGame() {
+  state.playing = false;
+  state.paused = false;
+  state.cutscene = false;
+  state.started = false;
+
+  multiplayer.leaveRoom();
+  state.roomId = null;
+
+  clearRemotePlayers();
+  closePause();
+  showScreen('lobby');
+}
+
+// ======================================================
+// КНОПКИ И СОБЫТИЯ
+// ======================================================
+
+function bindEvents() {
+  $('playButton')?.addEventListener('click', enterLobby);
+
+  $('settingsButton')?.addEventListener('click', openSettings);
+  $('menuSettingsButton')?.addEventListener('click', openSettings);
+  $('gameSettingsButton')?.addEventListener('click', openPause);
+
+  $('backToMenuButton')?.addEventListener('click', () => {
+    showScreen('menu');
+  });
+
+  $('closeSettingsButton')?.addEventListener('click', closeSettings);
+
+  document.querySelectorAll('[data-room]').forEach((button) => {
+    button.addEventListener('click', () => {
+      joinRoom(button.dataset.room);
+    });
+  });
+
+  $('leaveRoomButton')?.addEventListener('click', leaveRoom);
+
+  $('sensitivitySlider')?.addEventListener('input', (event) => {
+    updateSensitivity(event.target.value);
+  });
+
+  $('graphicsQuality')?.addEventListener('change', (event) => {
+    state.graphics = event.target.value;
+
+    if (renderer) {
+      renderer.setPixelRatio(
+        Math.min(
+          window.devicePixelRatio || 1,
+          state.graphics === 'high' ? 2 : state.graphics === 'medium' ? 1.35 : 1
+        )
+      );
+
+      renderer.shadowMap.enabled = state.graphics !== 'low';
+    }
+  });
+
+  $('soundToggle')?.addEventListener('change', (event) => {
+    state.sound = event.target.checked;
+  });
+
+  $('fullscreenButton')?.addEventListener('click', requestFullscreen);
+
+  $('interactButton')?.addEventListener('click', interact);
+  $('jumpButton')?.addEventListener('click', jump);
+
+  $('chatToggleButton')?.addEventListener('click', () => {
+    const open = !$('chatPanel')?.classList.contains('open');
+    setChatOpen(open);
+  });
+
+  $('closeChatButton')?.addEventListener('click', () => {
+    setChatOpen(false);
+  });
+
+  $('chatForm')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    const input = $('chatInput');
+    if (!input) return;
+
+    const message = input.value.trim();
+    if (!message) return;
+
+    if (multiplayer.sendChat(message)) {
+      input.value = '';
+    }
+  });
+
+  $('skipCutsceneButton')?.addEventListener('click', skipCutscene);
+
+  $('resumeButton')?.addEventListener('click', closePause);
+
+  $('pauseSettingsButton')?.addEventListener('click', () => {
+    state.screenBeforeSettings = 'game';
+    openSettings();
+  });
+
+  $('pauseExitButton')?.addEventListener('click', exitGame);
+  $('exitGameButton')?.addEventListener('click', openPause);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && state.screen === 'game' && !state.cutscene) {
+      openPause();
+    }
+  });
+
+  window.addEventListener('orientationchange', handleOrientation);
+  window.addEventListener('resize', handleOrientation);
+
+  setupJoystick();
+  setupLookControls();
+  setupKeyboard();
+}
+
+// ======================================================
+// ИГРОВОЙ ЦИКЛ
+// ======================================================
+
+function gameLoop(timestamp) {
+  animationFrame = requestAnimationFrame(gameLoop);
+
+  const delta = lastFrameTime
+    ? Math.min((timestamp - lastFrameTime) / 1000, 0.05)
     : 0;
 
-  state.lastTime = timestamp;
+  lastFrameTime = timestamp;
 
-  if (state.playing) {
+  if (!worldReady || !renderer || !scene || !camera) return;
+
+  if (state.cutscene) {
+    advanceCutscene(delta);
+  } else {
     updateMovement(delta);
-    updateClock(delta);
-    updateSurvival(delta);
-    updateHint();
-
-    if (timestamp - state.lastStatsUpdate > 2000) {
-      state.lastStatsUpdate = timestamp;
-      multiplayer.sendStats(state.health);
-    }
+    updateGameClock(delta);
+    updateNetwork(timestamp);
   }
 
-  updateCamera(delta);
+  updateRemotePlayers(delta);
+
+  if (player && camera) {
+    // Камера закреплена на персонаже.
+    camera.rotation.order = 'YXZ';
+    camera.rotation.x = state.pitch;
+  }
+
   renderer.render(scene, camera);
 }
 
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
+// ======================================================
+// ЗАПУСК
+// ======================================================
 
-window.addEventListener('contextmenu', (event) => {
-  event.preventDefault();
-});
+function main() {
+  bindEvents();
+  updateSensitivity($('sensitivitySlider')?.value || 50);
+  handleOrientation();
+  updateClockUI();
 
-updateStats();
-animate(0);
+  const savedName = multiplayer.playerName;
+  const nameElement = $('playerName');
+
+  if (nameElement) nameElement.textContent = savedName;
+
+  // Загружаем 3D-сцену заранее, чтобы уменьшить задержку при старте.
+  initWorld();
+
+  connectMultiplayer();
+
+  setConnectionStatus('Подключение...', false);
+}
+
+main();
