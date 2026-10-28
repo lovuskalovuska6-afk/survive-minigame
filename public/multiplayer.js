@@ -1,186 +1,299 @@
 
+'use strict';
+
 export class Multiplayer {
-  constructor(callbacks = {}) {
-    this.callbacks = callbacks;
+  constructor() {
     this.socket = null;
-    this.id = null;
-    this.nickname = 'Выживший';
-    this.roomId = null;
     this.connected = false;
-    this.lastMoveSent = 0;
+    this.currentRoom = null;
+    this.playerId = null;
+    this.playerName = this.createPlayerName();
+
+    this.handlers = {};
+    this.rooms = {};
+    this.players = [];
+    this.lastError = null;
+  }
+
+  createPlayerName() {
+    const saved = localStorage.getItem('lockedHomePlayerName');
+
+    if (saved && saved.trim()) {
+      return saved.trim().slice(0, 20);
+    }
+
+    const name = 'Игрок_' + Math.floor(1000 + Math.random() * 9000);
+
+    try {
+      localStorage.setItem('lockedHomePlayerName', name);
+    } catch (_) {}
+
+    return name;
+  }
+
+  on(eventName, callback) {
+    if (typeof callback !== 'function') return;
+
+    if (!this.handlers[eventName]) {
+      this.handlers[eventName] = [];
+    }
+
+    this.handlers[eventName].push(callback);
+  }
+
+  emitLocal(eventName, data) {
+    const callbacks = this.handlers[eventName];
+
+    if (!callbacks) return;
+
+    for (const callback of callbacks) {
+      try {
+        callback(data);
+      } catch (error) {
+        console.error(`Ошибка обработчика ${eventName}:`, error);
+      }
+    }
   }
 
   connect() {
-    if (this.socket) return;
-
-    if (typeof window.io !== 'function') {
-      this.callbacks.onStatus?.(
-        'Socket.IO не загрузился. Проверь подключение к серверу.'
-      );
+    if (this.socket && this.socket.connected) {
       return;
     }
 
-    this.socket = window.io({
+    if (typeof io !== 'function') {
+      this.emitLocal('connection:error', {
+        message: 'Socket.IO не загрузился. Проверь подключение к серверу.'
+      });
+      return;
+    }
+
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+
+    this.socket = io({
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000
+      reconnectionDelayMax: 5000,
+      timeout: 15000
     });
 
     this.socket.on('connect', () => {
       this.connected = true;
-      this.id = this.socket.id;
-      this.callbacks.onStatus?.('Соединение с сервером установлено.');
+      this.playerId = this.socket.id;
+      this.lastError = null;
+
+      this.emitLocal('connection:status', {
+        connected: true,
+        id: this.playerId
+      });
+
+      this.socket.emit('player:join', {
+        name: this.playerName
+      });
     });
 
-    this.socket.on('disconnect', () => {
+    this.socket.on('disconnect', (reason) => {
       this.connected = false;
-      this.callbacks.onStatus?.('Соединение потеряно. Переподключение…');
+
+      this.emitLocal('connection:status', {
+        connected: false,
+        reason
+      });
     });
 
-    this.socket.on('connect_error', () => {
-      this.callbacks.onStatus?.(
-        'Не удалось подключиться. Проверь сервер Render.'
-      );
+    this.socket.on('connect_error', (error) => {
+      this.lastError = error?.message || 'Ошибка соединения';
+
+      this.emitLocal('connection:error', {
+        message: this.lastError
+      });
     });
 
     this.socket.on('server:ready', (data) => {
-      this.id = data.id;
-      this.nickname = data.nickname || this.nickname;
-      this.callbacks.onReady?.(data);
+      this.emitLocal('server:ready', data);
     });
 
-    this.socket.on('profile:updated', (data) => {
-      this.nickname = data.nickname;
-      this.callbacks.onProfileUpdated?.(data);
+    this.socket.on('lobby:rooms', (data) => {
+      this.rooms = data?.rooms || data || {};
+
+      this.emitLocal('lobby:rooms', data);
     });
 
-    this.socket.on('profile:error', (data) => {
-      this.callbacks.onError?.(data.message);
-    });
-
-    this.socket.on('online:count', (count) => {
-      this.callbacks.onOnlineCount?.(count);
-    });
-
-    this.socket.on('lobby:rooms', (rooms) => {
-      this.callbacks.onLobbyRooms?.(rooms);
+    this.socket.on('lobby:players', (data) => {
+      this.emitLocal('lobby:players', data);
     });
 
     this.socket.on('room:joined', (data) => {
-      this.roomId = data.roomId;
-      this.callbacks.onRoomJoined?.(data);
-    });
+      this.currentRoom = data?.roomId || data?.room || this.currentRoom;
 
-    this.socket.on('room:left', () => {
-      this.roomId = null;
-      this.callbacks.onRoomLeft?.();
-    });
-
-    this.socket.on('room:error', (data) => {
-      this.callbacks.onError?.(data.message);
+      this.emitLocal('room:joined', data);
     });
 
     this.socket.on('room:state', (data) => {
-      this.callbacks.onRoomState?.(data);
+      if (data?.roomId || data?.room) {
+        this.currentRoom = data.roomId || data.room;
+      }
+
+      this.players = data?.players || [];
+
+      this.emitLocal('room:state', data);
     });
 
-    this.socket.on('player:moved', (data) => {
-      this.callbacks.onPlayerMoved?.(data);
+    this.socket.on('room:left', (data) => {
+      this.currentRoom = null;
+      this.players = [];
+
+      this.emitLocal('room:left', data);
     });
 
-    this.socket.on('player:stats:updated', (data) => {
-      this.callbacks.onPlayerStats?.(data);
+    this.socket.on('room:error', (data) => {
+      this.emitLocal('room:error', data);
+    });
+
+    this.socket.on('game:waiting', (data) => {
+      this.emitLocal('game:waiting', data);
+    });
+
+    this.socket.on('game:countdown', (data) => {
+      this.emitLocal('game:countdown', data);
     });
 
     this.socket.on('game:start', (data) => {
-      this.callbacks.onGameStart?.(data);
+      this.emitLocal('game:start', data);
     });
 
-    this.socket.on('game:event', (data) => {
-      this.callbacks.onGameEvent?.(data);
+    this.socket.on('player:moved', (data) => {
+      this.emitLocal('player:moved', data);
+    });
+
+    this.socket.on('player:joined', (data) => {
+      this.emitLocal('player:joined', data);
+    });
+
+    this.socket.on('player:left', (data) => {
+      this.emitLocal('player:left', data);
     });
 
     this.socket.on('chat:message', (data) => {
-      this.callbacks.onChatMessage?.(data);
+      this.emitLocal('chat:message', data);
     });
 
-    this.socket.on('chat:lobby', (data) => {
-      this.callbacks.onChatLobby?.(data);
+    this.socket.on('chat:error', (data) => {
+      this.emitLocal('chat:error', data);
     });
 
-    this.socket.on('chat:system', (data) => {
-      this.callbacks.onChatSystem?.(data);
+    this.socket.on('game:event', (data) => {
+      this.emitLocal('game:event', data);
     });
-  }
-
-  setNickname(nickname) {
-    if (!this.socket?.connected) {
-      this.callbacks.onError?.('Сервер ещё не подключён.');
-      return;
-    }
-
-    this.socket.emit('profile:set', { nickname });
   }
 
   joinRoom(roomId) {
-    if (!this.socket?.connected) {
-      this.callbacks.onError?.('Подожди подключения к серверу.');
-      return;
+    if (!this.socket || !this.socket.connected) {
+      this.emitLocal('connection:error', {
+        message: 'Нет соединения с сервером. Подожди и попробуй ещё раз.'
+      });
+      return false;
     }
 
-    this.socket.emit('room:join', { roomId });
+    if (!roomId) {
+      this.emitLocal('room:error', {
+        message: 'Не выбрана комната.'
+      });
+      return false;
+    }
+
+    this.socket.emit('room:join', {
+      roomId,
+      name: this.playerName
+    });
+
+    return true;
   }
 
   leaveRoom() {
-    if (this.socket?.connected && this.roomId) {
-      this.socket.emit('room:leave');
-    }
-  }
-
-  sendMove(position, rotation, animation) {
-    if (!this.socket?.connected || !this.roomId) return;
-
-    const now = performance.now();
-
-    if (now - this.lastMoveSent < 50) return;
-
-    this.lastMoveSent = now;
-
-    this.socket.volatile.emit('player:move', {
-      x: position.x,
-      y: position.y,
-      z: position.z,
-      rotation,
-      animation
-    });
-  }
-
-  sendStats(health) {
-    if (!this.socket?.connected || !this.roomId) return;
-
-    this.socket.emit('player:stats', { health });
-  }
-
-  sendChat(text) {
-    if (!this.socket?.connected) {
-      this.callbacks.onError?.('Нет соединения с сервером.');
+    if (!this.socket || !this.socket.connected) {
+      this.currentRoom = null;
       return;
     }
 
-    this.socket.emit('chat:send', { text });
+    this.socket.emit('room:leave');
+    this.currentRoom = null;
+    this.players = [];
   }
 
-  sendGameEvent(type, payload = {}) {
-    if (!this.socket?.connected || !this.roomId) return;
+  move(position, rotation) {
+    if (!this.socket || !this.socket.connected || !this.currentRoom) {
+      return;
+    }
 
-    this.socket.emit('game:event', { type, payload });
+    this.socket.emit('player:move', {
+      x: Number(position?.x) || 0,
+      y: Number(position?.y) || 0,
+      z: Number(position?.z) || 0,
+      rotation: Number(rotation) || 0
+    });
+  }
+
+  sendChat(message) {
+    if (!this.socket || !this.socket.connected) {
+      this.emitLocal('chat:error', {
+        message: 'Нет соединения с сервером.'
+      });
+      return false;
+    }
+
+    const cleanMessage = String(message || '').trim().slice(0, 180);
+
+    if (!cleanMessage) return false;
+
+    this.socket.emit('chat:message', {
+      message: cleanMessage
+    });
+
+    return true;
+  }
+
+  sendGameEvent(type, data = {}) {
+    if (!this.socket || !this.socket.connected) return;
+
+    this.socket.emit('game:event', {
+      type,
+      data
+    });
+  }
+
+  setPlayerName(name) {
+    const cleanName = String(name || '').trim().slice(0, 20);
+
+    if (!cleanName) return false;
+
+    this.playerName = cleanName;
+
+    try {
+      localStorage.setItem('lockedHomePlayerName', cleanName);
+    } catch (_) {}
+
+    if (this.socket?.connected) {
+      this.socket.emit('player:join', {
+        name: cleanName
+      });
+    }
+
+    return true;
   }
 
   disconnect() {
-    this.socket?.disconnect();
-    this.socket = null;
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+
     this.connected = false;
-    this.roomId = null;
+    this.currentRoom = null;
+    this.players = [];
   }
 }
