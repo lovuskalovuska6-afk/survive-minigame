@@ -1,0 +1,534 @@
+
+:root {
+  color-scheme: dark;
+  --bg: #10151b;
+  --panel: rgba(18, 24, 31, .94);
+  --border: rgba(255, 255, 255, .12);
+  --yellow: #ffd45a;
+  --text: #f5f5f5;
+  --muted: #aab3bf;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, sans-serif;
+}
+
+button, input {
+  font: inherit;
+}
+
+button {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  background: #252e38;
+  padding: 12px 15px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:active {
+  transform: scale(.97);
+}
+
+button:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+input {
+  width: 100%;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  outline: none;
+  background: #111820;
+  color: white;
+}
+
+input:focus {
+  border-color: var(--yellow);
+}
+
+.hidden {
+  display: none !important;
+}
+
+#game {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+#game canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: linear-gradient(120deg, rgba(7, 11, 16, .9), rgba(7, 11, 16, .55));
+  overflow-y: auto;
+}
+
+.menu-card {
+  width: min(430px, 100%);
+  max-height: 95%;
+  overflow-y: auto;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(16, 21, 27, .95);
+  box-shadow: 0 25px 80px #0008;
+}
+
+.eyebrow {
+  color: var(--yellow);
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+h1 {
+  margin: 16px 0 8px;
+  font-size: clamp(36px, 8vw, 56px);
+  line-height: .95;
+  letter-spacing: -2px;
+}
+
+h1 span {
+  color: var(--yellow);
+}
+
+.subtitle {
+  color: var(--muted);
+  margin: 14px 0 25px;
+}
+
+.menu-card label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.primary {
+  background: var(--yellow);
+  color: #171717;
+  border-color: var(--yellow);
+  font-weight: bold;
+}
+
+.menu-card > .primary {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.secondary {
+  background: #202832;
+}
+
+.status {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 0;
+  overflow-wrap: anywhere;
+}
+
+#roomPicker {
+  margin-top: 22px;
+}
+
+#roomPicker h2 {
+  font-size: 18px;
+}
+
+.room-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 8px 0;
+  text-align: left;
+}
+
+.room-button span {
+  color: var(--yellow);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+#backButton {
+  width: 100%;
+  margin-top: 8px;
+}
+
+#hud {
+  position: fixed;
+  z-index: 3;
+  top: 12px;
+  left: 12px;
+  width: 210px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  pointer-events: auto;
+}
+
+.hud-title {
+  font-size: 12px;
+  color: var(--yellow);
+  font-weight: bold;
+  letter-spacing: .5px;
+}
+
+.hud-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 9px 0 12px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.stat {
+  margin: 10px 0;
+  font-size: 11px;
+}
+
+.stat > span {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.stat > div {
+  height: 6px;
+  overflow: hidden;
+  background: #343c45;
+  border-radius: 9px;
+}
+
+.stat i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--yellow);
+  transition: width .2s;
+}
+
+#healthBar {
+  background: #ff5d65;
+}
+
+#hungerBar {
+  background: #f4ad4e;
+}
+
+#thirstBar {
+  background: #56b7ff;
+}
+
+#staminaBar {
+  background: #8de37a;
+}
+
+.small-button {
+  width: 100%;
+  margin-top: 7px;
+  padding: 9px;
+  text-align: left;
+  font-size: 12px;
+}
+
+#hint {
+  position: fixed;
+  z-index: 2;
+  left: 50%;
+  bottom: 25px;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 80%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(10, 14, 18, .8);
+  text-align: center;
+  font-size: 12px;
+}
+
+.panel {
+  position: fixed;
+  z-index: 7;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(360px, 88vw);
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: 0 20px 70px #0008;
+}
+
+.panel h2 {
+  margin-top: 0;
+  font-size: 20px;
+}
+
+.close-panel {
+  float: right;
+  padding: 6px 10px;
+}
+
+#inventoryList, #shopList {
+  display: grid;
+  gap: 8px;
+  margin: 15px 0;
+}
+
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.item-row button {
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+.chat-panel {
+  position: fixed;
+  z-index: 4;
+  top: 12px;
+  right: 12px;
+  width: min(280px, 34vw);
+  min-width: 190px;
+  height: 225px;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.chat-heading {
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 7px;
+}
+
+#chatMessages {
+  flex: 1;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+
+.chat-message {
+  margin: 6px 0;
+  color: #e7eaf0;
+}
+
+.chat-message strong {
+  color: var(--yellow);
+}
+
+#chatForm {
+  display: flex;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+#chatForm input {
+  min-width: 0;
+  padding: 8px;
+  font-size: 11px;
+}
+
+#chatForm button {
+  padding: 7px 10px;
+}
+
+.toast {
+  position: fixed;
+  z-index: 9;
+  top: 48%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 13px 18px;
+  max-width: 85%;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #151d25;
+  text-align: center;
+  font-size: 13px;
+}
+
+#touchControls {
+  position: fixed;
+  z-index: 3;
+  inset: auto 0 15px;
+  height: 155px;
+  pointer-events: none;
+}
+
+#joystickArea {
+  position: absolute;
+  left: 20px;
+  bottom: 5px;
+  width: 120px;
+  height: 120px;
+  border: 2px solid #ffffff55;
+  border-radius: 50%;
+  background: #10151b66;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+#joystickKnob {
+  position: absolute;
+  left: 35px;
+  top: 35px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #ffd45acc;
+  border: 2px solid #fff9;
+  pointer-events: none;
+}
+
+.touch-actions {
+  position: absolute;
+  right: 18px;
+  bottom: 4px;
+  display: flex;
+  gap: 9px;
+  align-items: end;
+  pointer-events: auto;
+}
+
+.touch-actions button {
+  width: 54px;
+  height: 54px;
+  padding: 0;
+  border-radius: 50%;
+  background: #10151bcc;
+  border: 1px solid #ffffff88;
+  font-size: 20px;
+  touch-action: none;
+}
+
+#jumpButton {
+  width: 64px;
+  height: 64px;
+  background: #ffd45add;
+  color: #141414;
+}
+
+#crosshair {
+  position: fixed;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 20px;
+  text-shadow: 0 1px 5px black;
+  pointer-events: none;
+}
+
+#rotateMessage {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #090d12ee;
+}
+
+.rotate-card {
+  max-width: 330px;
+  text-align: center;
+}
+
+.rotate-card p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+@media (orientation: portrait) and (max-width: 900px) {
+  #rotateMessage {
+    display: grid;
+  }
+
+  #hud {
+    top: 8px;
+    left: 8px;
+    width: 160px;
+    padding: 9px;
+  }
+
+  .hud-title {
+    font-size: 10px;
+  }
+
+  .stat {
+    margin: 7px 0;
+  }
+
+  .chat-panel {
+    top: 8px;
+    right: 8px;
+    width: 42vw;
+    min-width: 145px;
+    height: 180px;
+  }
+
+  #joystickArea {
+    width: 100px;
+    height: 100px;
+  }
+
+  #joystickKnob {
+    left: 27px;
+    top: 27px;
+    width: 42px;
+    height: 42px;
+  }
+}
+
+@media (orientation: landscape) {
+  #rotateMessage {
+    display: none;
+  }
+}
