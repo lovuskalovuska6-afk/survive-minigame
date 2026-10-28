@@ -3,294 +3,305 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-  >
-  <meta name="theme-color" content="#090b10">
-  <meta
-    name="description"
-    content="THE LOCKED HOME: 14 DAYS — игра на выживание"
-  >
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#090d16">
+  <meta name="description" content="THE LOCKED HOME: 14 DAYS — игра на выживание">
   <title>THE LOCKED HOME: 14 DAYS</title>
   <link rel="stylesheet" href="/style.css">
 </head>
-
 <body>
-  <div id="app">
+<div id="app">
 
-    <!-- Загрузка и подключение к серверу -->
-    <section id="loadingScreen" class="screen">
-      <div class="loading-content">
-        <h1>THE LOCKED HOME</h1>
-        <p class="subtitle">14 DAYS</p>
-
-        <div class="loading-spinner"></div>
-
-        <p id="connectionStatus">
-          Подключение к серверу...
-        </p>
-
-        <p id="loadingError" hidden>
-          Не удалось подключиться к серверу.
-        </p>
-
-        <button id="retryConnectionButton" hidden>
-          Попробовать снова
-        </button>
-      </div>
-    </section>
-
-    <!-- Главное меню -->
-    <section id="mainMenu" class="screen" hidden>
-      <div class="menu-content">
-        <h1>THE LOCKED HOME</h1>
-        <p class="subtitle">14 DAYS</p>
-        <p class="menu-description">
-          Переживи 14 дней в запертом доме.
-        </p>
-
-        <label for="nicknameInput">Твоё имя</label>
-        <input
-          id="nicknameInput"
-          type="text"
-          maxlength="16"
-          placeholder="Игрок"
-          autocomplete="nickname"
-        >
-
-        <button id="playButton">
-          ИГРАТЬ
-        </button>
-
-        <p id="menuStatus" role="status"></p>
-      </div>
-    </section>
-
-    <!-- Лобби с комнатами -->
-    <section id="lobbyScreen" class="screen" hidden>
-      <header class="screen-header">
-        <button id="backToMenuButton" class="back-button">
-          ← Назад
-        </button>
-
-        <h2>ВЫБОР КОМНАТЫ</h2>
-      </header>
-
-      <div class="lobby-content">
-        <p id="lobbyStatus" role="status">
-          Выбери комнату
-        </p>
-
-        <div id="roomsContainer">
-          <button
-            class="room-button"
-            data-room-id="solo1"
-            data-mode="solo"
-          >
-            <span class="room-title">Одиночная игра 1</span>
-            <span class="room-description">
-              Начало сразу
-            </span>
-            <span class="room-players" id="solo1Players">
-              0/1
-            </span>
-          </button>
-
-          <button
-            class="room-button"
-            data-room-id="solo2"
-            data-mode="solo"
-          >
-            <span class="room-title">Одиночная игра 2</span>
-            <span class="room-description">
-              Начало сразу
-            </span>
-            <span class="room-players" id="solo2Players">
-              0/1
-            </span>
-          </button>
-
-          <button
-            class="room-button"
-            data-room-id="coop1"
-            data-mode="coop"
-          >
-            <span class="room-title">Совместная игра 1</span>
-            <span class="room-description">
-              Для двух игроков
-            </span>
-            <span class="room-players" id="coop1Players">
-              0/2
-            </span>
-          </button>
-
-          <button
-            class="room-button"
-            data-room-id="coop2"
-            data-mode="coop"
-          >
-            <span class="room-title">Совместная игра 2</span>
-            <span class="room-description">
-              Для двух игроков
-            </span>
-            <span class="room-players" id="coop2Players">
-              0/2
-            </span>
-          </button>
+  <!-- Главное меню -->
+  <section id="mainMenu" class="screen active">
+    <div class="menu-background"></div>
+    <header class="top-bar">
+      <div class="brand">
+        <span class="brand-icon">🏚️</span>
+        <div>
+          <strong>THE LOCKED HOME</strong>
+          <small>14 DAYS</small>
         </div>
+      </div>
+      <div class="top-actions">
+        <span id="connectionStatus" class="status-pill">Подключение...</span>
+        <button id="menuSettingsButton" class="icon-button" aria-label="Настройки">⚙</button>
+      </div>
+    </header>
 
-        <div id="waitingPanel" hidden>
-          <h3 id="waitingTitle">Ожидание игроков</h3>
-          <p id="waitingMessage" role="status">
-            Подключение к комнате...
-          </p>
+    <main class="menu-content">
+      <p class="eyebrow">ИСТОРИЯ ВЫЖИВАНИЯ</p>
+      <h1 class="game-title">THE LOCKED <span>HOME</span></h1>
+      <p class="game-subtitle">Ты остался один. Дом заперт. Продержись 14 дней.</p>
+      <div class="menu-buttons">
+        <button id="playButton" class="primary-button">ИГРАТЬ</button>
+        <button id="settingsButton" class="secondary-button">НАСТРОЙКИ</button>
+      </div>
+      <p class="muted-text">Одиночный режим и совместная игра</p>
+    </main>
 
-          <div id="countdownContainer" hidden>
-            <span id="countdownNumber">3</span>
-          </div>
+    <footer class="menu-footer">
+      <span>THE LOCKED HOME</span>
+      <span>14 DAYS</span>
+    </footer>
+  </section>
 
-          <button id="leaveRoomButton">
-            Покинуть комнату
+  <!-- Выбор комнаты -->
+  <section id="lobbyScreen" class="screen">
+    <header class="top-bar">
+      <button id="backToMenuButton" class="secondary-button small-button">← НАЗАД</button>
+      <div class="brand">
+        <div>
+          <strong>ВЫБОР КОМНАТЫ</strong>
+          <small>ОДИНОЧНО ИЛИ ВМЕСТЕ</small>
+        </div>
+      </div>
+      <span id="lobbyConnectionStatus" class="status-pill">Онлайн</span>
+    </header>
+
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">МЕСТО ДЛЯ ИГРЫ</p>
+        <h2>Выбери комнату</h2>
+        <p>В совместной комнате нужны два игрока.</p>
+      </div>
+    </div>
+
+    <div class="lobby-layout">
+      <div class="lobby-scene">
+        <div class="lobby-sky"></div>
+        <div class="lobby-moon"></div>
+        <div class="lobby-hill hill-back"></div>
+        <div class="lobby-hill hill-front"></div>
+        <div class="lobby-ground"></div>
+
+        <div class="cabin-row">
+          <button class="cabin-card" data-room="solo1">
+            <span class="cabin-number">01</span>
+            <span class="cabin-art">🏚️</span>
+            <strong>Одиночная 1</strong>
+            <span class="cabin-count" id="count-solo1">0 / 1</span>
+            <span class="cabin-status">СТАРТ СРАЗУ</span>
+          </button>
+
+          <button class="cabin-card" data-room="solo2">
+            <span class="cabin-number">02</span>
+            <span class="cabin-art">🏠</span>
+            <strong>Одиночная 2</strong>
+            <span class="cabin-count" id="count-solo2">0 / 1</span>
+            <span class="cabin-status">СТАРТ СРАЗУ</span>
+          </button>
+
+          <button class="cabin-card" data-room="coop1">
+            <span class="cabin-number">03</span>
+            <span class="cabin-art">🏡</span>
+            <strong>Совместная 1</strong>
+            <span class="cabin-count" id="count-coop1">0 / 2</span>
+            <span class="cabin-status">2 ИГРОКА</span>
+          </button>
+
+          <button class="cabin-card" data-room="coop2">
+            <span class="cabin-number">04</span>
+            <span class="cabin-art">🌲</span>
+            <strong>Совместная 2</strong>
+            <span class="cabin-count" id="count-coop2">0 / 2</span>
+            <span class="cabin-status">2 ИГРОКА</span>
           </button>
         </div>
       </div>
-    </section>
 
-    <!-- Игровой экран -->
-    <section id="gameScreen" class="screen game-screen" hidden>
-      <div id="gameWorld">
-
-        <header id="gameHeader">
-          <div class="game-title">
-            <span>THE LOCKED HOME</span>
-            <span id="dayLabel">ДЕНЬ 1</span>
-          </div>
-
-          <div id="gameClock">
-            <span>Время</span>
-            <strong id="gameTimer">08:00</strong>
-          </div>
-
-          <div id="playerCount">
-            Игроков: <span id="onlinePlayers">1</span>
-          </div>
-        </header>
-
-        <!-- Сюжетная заставка -->
-        <div id="cutsceneScreen" hidden>
-          <div id="cutsceneContent">
-            <p id="cutsceneText">
-              Машина подъезжает к дому...
-            </p>
-
-            <button id="skipCutsceneButton">
-              Пропустить
-            </button>
+      <aside class="lobby-sidebar">
+        <div class="panel">
+          <h3>Твой персонаж</h3>
+          <div class="avatar-preview">🧍</div>
+          <div class="player-name" id="playerName">Игрок</div>
+          <div class="online-indicator">
+            <span class="online-dot"></span>
+            Подключение к серверу
           </div>
         </div>
 
-        <!-- Сюжетные сообщения -->
-        <div id="storyMessage" role="status" hidden></div>
-
-        <!-- Подсказки -->
-        <div id="interactionHint" hidden>
-          <span id="interactionHintText"></span>
+        <div class="panel">
+          <h3>Как играть</h3>
+          <p class="help-text">Одиночная комната начинает игру без второго игрока.</p>
+          <p class="help-text">В совместной комнате дождись второго игрока.</p>
+          <p class="help-text">Во время игры используй джойстик для движения и касание экрана для обзора.</p>
         </div>
+      </aside>
+    </div>
+  </section>
 
-        <!-- Прицел -->
-        <div id="crosshair" aria-hidden="true">+</div>
+  <!-- Ожидание начала игры -->
+  <section id="waitingScreen" class="screen">
+    <div class="waiting-card">
+      <div class="waiting-house">🏚️</div>
+      <p class="eyebrow">THE LOCKED HOME</p>
+      <h2 id="waitingTitle">Ожидание игроков</h2>
+      <p id="waitingMessage">Подключение к комнате...</p>
 
-        <!-- Сенсорное управление -->
-        <div id="mobileControls">
-
-          <div id="movementControls">
-            <button id="moveForwardButton" aria-label="Вперёд">
-              ▲
-            </button>
-
-            <div class="movement-row">
-              <button id="moveLeftButton" aria-label="Влево">
-                ◀
-              </button>
-
-              <button id="moveBackwardButton" aria-label="Назад">
-                ▼
-              </button>
-
-              <button id="moveRightButton" aria-label="Вправо">
-                ▶
-              </button>
-            </div>
-          </div>
-
-          <div id="lookControls">
-            <div id="lookJoystick">
-              <div id="lookJoystickKnob"></div>
-            </div>
-            <span>Обзор</span>
-          </div>
-
-          <div id="actionControls">
-            <button id="interactButton">
-              Взаимодействие
-            </button>
-
-            <button id="jumpButton">
-              Прыжок
-            </button>
-          </div>
+      <div class="waiting-players">
+        <div class="waiting-player">
+          <div class="waiting-avatar">🧍</div>
+          <span>Ты</span>
         </div>
-
-        <!-- Настройки камеры -->
-        <div id="cameraSettings">
-          <label for="sensitivitySlider">
-            Чувствительность камеры:
-            <span id="sensitivityValue">50%</span>
-          </label>
-
-          <input
-            id="sensitivitySlider"
-            type="range"
-            min="10"
-            max="100"
-            value="50"
-          >
+        <div class="waiting-player">
+          <div class="waiting-avatar">❔</div>
+          <span>Напарник</span>
         </div>
+      </div>
 
-        <!-- Чат -->
-        <div id="chatPanel">
-          <div id="chatMessages" aria-live="polite"></div>
+      <div class="countdown-number" id="countdownNumber">…</div>
+      <button id="leaveRoomButton" class="secondary-button">ПОКИНУТЬ КОМНАТУ</button>
+    </div>
+  </section>
 
-          <form id="chatForm">
-            <input
-              id="chatInput"
-              type="text"
-              maxlength="200"
-              placeholder="Сообщение..."
-              autocomplete="off"
-            >
+  <!-- Настройки -->
+  <section id="settingsScreen" class="screen">
+    <div class="settings-card">
+      <p class="eyebrow">ПАРАМЕТРЫ ИГРЫ</p>
+      <h2>Настройки</h2>
 
-            <button type="submit" id="sendChatButton">
-              Отправить
-            </button>
-          </form>
+      <div class="setting-row">
+        <div>
+          <strong>Чувствительность камеры</strong>
+          <p>Скорость поворота обзора</p>
         </div>
+        <span id="sensitivityValue">50%</span>
+      </div>
+      <input id="sensitivitySlider" type="range" min="10" max="100" value="50">
 
-        <!-- Выход из игры -->
-        <button id="exitGameButton">
-          Выйти
+      <div class="setting-row">
+        <div>
+          <strong>Качество графики</strong>
+          <p>Влияет на производительность</p>
+        </div>
+      </div>
+      <select id="graphicsQuality">
+        <option value="low">Низкое</option>
+        <option value="medium" selected>Среднее</option>
+        <option value="high">Высокое</option>
+      </select>
+
+      <div class="setting-row">
+        <div>
+          <strong>Звук</strong>
+          <p>Включить звуковые эффекты</p>
+        </div>
+        <label class="toggle">
+          <input id="soundToggle" type="checkbox" checked>
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+
+      <button id="fullscreenButton" class="secondary-button">ПОЛНЫЙ ЭКРАН</button>
+      <button id="closeSettingsButton" class="primary-button">СОХРАНИТЬ И ВЕРНУТЬСЯ</button>
+    </div>
+  </section>
+
+  <!-- Игровой мир -->
+  <section id="gameScreen" class="screen">
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="game-top-hud">
+      <div class="hud-card">
+        <span class="hud-label">ДЕНЬ</span>
+        <strong id="dayValue">1</strong>
+      </div>
+      <div class="hud-card time-card">
+        <span class="hud-label">ВРЕМЯ</span>
+        <strong id="timeValue">08:00</strong>
+      </div>
+      <div class="hud-card">
+        <span class="hud-label">ИГРОКИ</span>
+        <strong id="gamePlayerCount">1</strong>
+      </div>
+      <button id="gameSettingsButton" class="icon-button" aria-label="Пауза">Ⅱ</button>
+    </div>
+
+    <div class="objective-panel">
+      <span class="objective-icon">📌</span>
+      <div>
+        <small>ТВОЯ ЦЕЛЬ</small>
+        <strong id="objectiveText">Осмотрись вокруг</strong>
+      </div>
+    </div>
+
+    <div class="mobile-controls">
+      <div id="movementJoystick" class="joystick">
+        <div class="joystick-ring"></div>
+        <div id="movementStick" class="joystick-stick"></div>
+      </div>
+
+      <div id="lookArea" class="look-area">
+        <span>Проведи пальцем, чтобы осмотреться</span>
+      </div>
+
+      <div class="action-buttons">
+        <button id="interactButton" class="action-button">
+          <span>✋</span><small>Действие</small>
+        </button>
+        <button id="jumpButton" class="action-button">
+          <span>⬆</span><small>Прыжок</small>
         </button>
       </div>
-    </section>
+    </div>
 
-    <!-- Ошибки -->
-    <div id="toastMessage" role="status" aria-live="polite" hidden></div>
+    <div class="game-bottom-hud">
+      <button id="chatToggleButton" class="chat-toggle">ЧАТ</button>
+      <span id="gameStatus">Ты остался один.</span>
+      <button id="exitGameButton" class="exit-button">ВЫЙТИ</button>
+    </div>
 
+    <div id="chatPanel" class="chat-panel">
+      <div class="chat-header">
+        <strong>Чат игроков</strong>
+        <button id="closeChatButton" class="icon-button" aria-label="Закрыть чат">×</button>
+      </div>
+      <div id="chatMessages" class="chat-messages" aria-live="polite"></div>
+      <form id="chatForm" class="chat-form">
+        <input id="chatInput" type="text" maxlength="180" placeholder="Сообщение..." autocomplete="off">
+        <button type="submit">➤</button>
+      </form>
+    </div>
+
+    <!-- Сюжетная заставка -->
+    <div id="cutsceneOverlay" class="cutscene-overlay">
+      <div id="cutsceneVisual" class="cutscene-visual">
+        <div class="cutscene-road"></div>
+        <div class="cutscene-house">🏚️</div>
+        <div class="cutscene-car">🚙</div>
+      </div>
+      <div class="cutscene-caption">
+        <h1 id="dayTitle" class="day-title">ДЕНЬ 1</h1>
+        <p id="cutsceneText">Родители привезли тебя домой...</p>
+        <button id="skipCutsceneButton" class="primary-button">ПРОПУСТИТЬ</button>
+      </div>
+    </div>
+
+    <!-- Пауза -->
+    <div id="gamePauseOverlay" class="pause-overlay hidden">
+      <div class="pause-card">
+        <h2>Пауза</h2>
+        <button id="resumeButton" class="primary-button">ПРОДОЛЖИТЬ</button>
+        <button id="pauseSettingsButton" class="secondary-button">НАСТРОЙКИ</button>
+        <button id="pauseExitButton" class="secondary-button">ВЫЙТИ В ЛОББИ</button>
+      </div>
+    </div>
+
+    <div id="notification" class="notification" role="status" aria-live="polite"></div>
+  </section>
+
+  <!-- Подсказка для телефона -->
+  <div id="rotateScreen" class="rotate-screen">
+    <div class="rotate-icon">📱</div>
+    <h1>Поверни телефон</h1>
+    <p>Для игры удобнее горизонтальный режим экрана.</p>
+    <div class="rotate-animation">↻</div>
   </div>
 
-  <!-- Сначала Socket.IO, затем игровой JavaScript -->
-  <script src="/socket.io/socket.io.js"></script>
-  <script type="module" src="/game.js"></script>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script type="module" src="/game.js"></script>
 </body>
 </html>
