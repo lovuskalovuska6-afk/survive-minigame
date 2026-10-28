@@ -1,19 +1,24 @@
 
-/* public/style.css */
+/* =========================================================
+   THE LOCKED HOME: 30 DAYS
+   Полный мобильный интерфейс: горизонтальный экран
+   ========================================================= */
 
 :root {
   color-scheme: dark;
-  --bg: #090d16;
-  --panel: rgba(17, 24, 39, 0.96);
-  --panel-light: rgba(30, 41, 59, 0.94);
-  --border: rgba(148, 163, 184, 0.2);
+  --bg: #080b10;
+  --panel: rgba(13, 18, 27, 0.94);
+  --panel-light: rgba(27, 35, 47, 0.92);
+  --border: rgba(210, 224, 240, 0.15);
   --text: #f1f5f9;
-  --muted: #94a3b8;
-  --accent: #eab308;
-  --accent-hover: #facc15;
-  --green: #22c55e;
-  --red: #ef4444;
-  --blue: #38bdf8;
+  --muted: #9ca9ba;
+  --accent: #e7b65d;
+  --accent-bright: #ffd782;
+  --danger: #ed6262;
+  --success: #7fca8c;
+  --top-height: 52px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * {
@@ -30,39 +35,36 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: Arial, Helvetica, sans-serif;
-}
-
-body {
-  user-select: none;
-  -webkit-user-select: none;
   overscroll-behavior: none;
 }
 
+body {
+  min-height: 100%;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
 button {
   color: var(--text);
-  cursor: pointer;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: #263247;
-  padding: 10px 14px;
+  background: rgba(35, 43, 54, 0.94);
+  cursor: pointer;
+  touch-action: manipulation;
   transition:
     background 0.15s ease,
     border-color 0.15s ease,
     transform 0.15s ease;
 }
 
-button:hover {
-  background: #35445d;
-  border-color: rgba(234, 179, 8, 0.65);
-}
-
 button:active {
-  transform: scale(0.97);
+  transform: scale(0.96);
 }
 
 button:disabled {
@@ -70,18 +72,19 @@ button:disabled {
   cursor: not-allowed;
 }
 
-input {
-  width: 100%;
+input,
+select {
   min-width: 0;
-  padding: 12px;
   color: var(--text);
-  background: #0f172a;
-  border: 1px solid #475569;
+  background: #101722;
+  border: 1px solid var(--border);
   border-radius: 10px;
+  padding: 11px 12px;
   outline: none;
 }
 
-input:focus {
+input:focus,
+select:focus {
   border-color: var(--accent);
 }
 
@@ -89,85 +92,22 @@ input:focus {
   display: none !important;
 }
 
-/* Главное меню */
-
-#mainMenu {
+#gameScreen,
+#mainMenu,
+#cutsceneScreen,
+#orientationScreen,
+#gameOverScreen {
   position: fixed;
   inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  overflow-y: auto;
-  background:
-    radial-gradient(ellipse at 50% 20%, rgba(30, 64, 90, 0.45), transparent 55%),
-    linear-gradient(145deg, #090d16, #111827 55%, #101827);
-}
-
-.menu-card {
-  width: min(440px, 100%);
-  padding: 28px;
-  border: 1px solid var(--border);
-  border-radius: 22px;
-  background: rgba(15, 23, 42, 0.93);
-  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.45);
-}
-
-.menu-card h1 {
-  margin: 0 0 12px;
-  color: var(--accent);
-  font-size: clamp(28px, 7vw, 42px);
-  line-height: 1.05;
-  text-align: center;
-}
-
-.menu-description {
-  margin: 0 0 22px;
-  color: var(--muted);
-  line-height: 1.5;
-  text-align: center;
-}
-
-.menu-card label {
-  display: block;
-  margin-bottom: 8px;
-  color: #cbd5e1;
-  font-size: 14px;
-}
-
-.menu-card input {
-  margin-bottom: 14px;
-}
-
-.menu-card button {
   width: 100%;
-  margin-top: 9px;
-  padding: 13px;
-  font-weight: 700;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
 }
-
-#startGameButton {
-  color: #111827;
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-#startGameButton:hover {
-  background: var(--accent-hover);
-}
-
-#continueGameButton {
-  background: #1e293b;
-}
-
-/* Игровой экран */
 
 #gameScreen {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
-  background: #17251d;
+  background: #101820;
+  isolation: isolate;
 }
 
 #gameCanvas {
@@ -180,191 +120,360 @@ input:focus {
   touch-action: none;
 }
 
-/* Верхняя панель */
+/* =========================================================
+   ОРИЕНТАЦИЯ ТЕЛЕФОНА
+   ========================================================= */
 
-#topBar {
-  position: absolute;
-  z-index: 10;
-  top: 12px;
-  left: 12px;
-  right: 12px;
+#orientationScreen {
+  z-index: 10000;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: rgba(9, 13, 22, 0.82);
-  backdrop-filter: blur(12px);
-  pointer-events: auto;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(ellipse at 50% 35%, #293344 0%, transparent 58%),
+    #080b10;
 }
 
-.top-info {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  font-size: 13px;
+.orientation-card {
+  width: min(440px, 100%);
+  text-align: center;
 }
 
-#dayNumber {
-  color: var(--accent);
+.orientation-icon {
+  font-size: clamp(48px, 10vw, 82px);
+  margin-bottom: 18px;
+  animation: rotatePhone 2.2s ease-in-out infinite;
+}
+
+@keyframes rotatePhone {
+  0%, 100% { transform: rotate(0deg); }
+  45%, 70% { transform: rotate(90deg); }
+}
+
+#orientationScreen h1 {
+  margin: 0 0 12px;
+  font-size: clamp(23px, 5vw, 36px);
+}
+
+#orientationScreen p {
+  margin: 0 auto 24px;
+  max-width: 340px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+#orientationContinueButton {
+  min-height: 48px;
+  padding: 0 24px;
+  border-radius: 12px;
+  color: #17130b;
+  background: var(--accent);
+  border: none;
   font-weight: 800;
 }
 
-#gameTime {
-  color: #cbd5e1;
-}
+/* =========================================================
+   ГЛАВНОЕ МЕНЮ
+   ========================================================= */
 
-#pauseButton {
-  flex-shrink: 0;
-  padding: 8px 12px;
-}
-
-/* Показатели игрока */
-
-#statusPanel {
-  position: absolute;
-  z-index: 10;
-  top: 76px;
-  left: 12px;
-  width: min(245px, calc(100vw - 24px));
+#mainMenu {
+  z-index: 100;
   display: flex;
-  flex-direction: column;
-  gap: 9px;
-  padding: 13px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: rgba(9, 13, 22, 0.8);
-  backdrop-filter: blur(10px);
-  pointer-events: none;
+  align-items: center;
+  justify-content: center;
+  padding:
+    max(20px, var(--safe-top))
+    18px
+    max(20px, var(--safe-bottom));
+  overflow-y: auto;
+  background:
+    linear-gradient(90deg, rgba(4, 7, 12, 0.92), rgba(4, 7, 12, 0.3)),
+    radial-gradient(ellipse at 72% 35%, #455365 0%, transparent 35%),
+    linear-gradient(145deg, #252e3a, #0b1018 65%);
 }
 
-.stat-row {
-  display: grid;
-  grid-template-columns: 66px minmax(40px, 1fr) 35px;
-  align-items: center;
-  gap: 8px;
+.menu-background {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(0deg, rgba(4, 7, 12, 0.95), transparent 65%),
+    repeating-linear-gradient(
+      135deg,
+      transparent 0,
+      transparent 90px,
+      rgba(255, 255, 255, 0.012) 91px,
+      rgba(255, 255, 255, 0.012) 92px
+    );
+}
+
+.menu-card {
+  position: relative;
+  width: min(440px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: clamp(20px, 4vw, 34px);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 22px;
+  background: rgba(8, 12, 19, 0.84);
+  box-shadow: 0 25px 90px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.game-logo {
+  margin: 0;
+  font-size: clamp(29px, 5vw, 43px);
+  line-height: 1.04;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+}
+
+.game-logo span {
+  display: block;
+  color: var(--accent);
+}
+
+.game-subtitle {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+}
+
+.menu-story {
+  margin: 22px 0;
+  color: #c1cbd8;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.menu-label {
+  display: block;
+  margin: 0 0 8px;
+  color: var(--muted);
   font-size: 12px;
 }
 
-.stat-label {
-  color: #cbd5e1;
-}
-
-.stat-track {
-  height: 8px;
-  overflow: hidden;
-  border-radius: 20px;
-  background: #334155;
-}
-
-.stat-bar {
+#playerName {
   width: 100%;
-  height: 100%;
-  border-radius: inherit;
-  transition: width 0.2s ease;
+  margin-bottom: 14px;
 }
 
-#healthBar {
-  background: var(--red);
+#mainMenu button {
+  width: 100%;
+  min-height: 45px;
+  margin-top: 9px;
+  padding: 10px 14px;
+  border-radius: 11px;
+  font-weight: 700;
 }
 
-#hungerBar {
-  background: #f97316;
+#startGameButton {
+  color: #17130b;
+  background: var(--accent);
+  border-color: transparent;
 }
 
-#thirstBar {
-  background: var(--blue);
+#startGameButton:hover {
+  background: var(--accent-bright);
 }
 
-#energyBar {
-  background: var(--green);
+#continueGameButton {
+  background: rgba(231, 182, 93, 0.13);
+  border-color: rgba(231, 182, 93, 0.35);
 }
 
-.stat-value {
-  color: #f8fafc;
-  text-align: right;
+.menu-version {
+  margin-top: 20px;
+  color: #697587;
+  font-size: 11px;
+  text-align: center;
+}
+
+/* =========================================================
+   ВЕРХНЯЯ ПАНЕЛЬ
+   ========================================================= */
+
+#topBar {
+  position: absolute;
+  z-index: 5;
+  top: max(7px, var(--safe-top));
+  left: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: var(--top-height);
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: rgba(8, 12, 18, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+
+#topBar > * {
+  pointer-events: auto;
+}
+
+#topBar button {
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+#dayNumber {
+  color: var(--accent-bright);
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+#gameTime {
+  color: #e5eaf0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+#connectionStatus {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#playersButton {
+  margin-left: auto;
+}
+
+#playerCount {
+  color: var(--accent-bright);
+  font-weight: 900;
+}
+
+/* =========================================================
+   СТАТУСЫ ВЫЖИВАНИЯ
+   ========================================================= */
+
+#statusPanel {
+  position: absolute;
+  z-index: 4;
+  top: calc(max(7px, var(--safe-top)) + 62px);
+  left: 10px;
+  width: min(190px, 30vw);
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: rgba(8, 12, 18, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.status-row {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  margin: 7px 0;
+  font-size: 11px;
+}
+
+.status-label {
+  color: #c2cbd7;
+}
+
+.status-number {
+  color: #f2f5f8;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
+.status-track {
+  grid-column: 2 / 4;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.status-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--success);
+  transition: width 0.2s ease;
+}
+
+#healthBar { background: #e45f60; }
+#hungerBar { background: #e8ad57; }
+#thirstBar { background: #5da9ee; }
+#energyBar { background: #a98ae9; }
+
 #moneyValue {
-  padding-top: 5px;
-  color: var(--accent);
-  font-size: 14px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+  color: var(--accent-bright);
+  font-size: 12px;
   font-weight: 800;
 }
 
-/* Название локации и задание */
+/* =========================================================
+   ЦЕЛЬ И МЕСТО
+   ========================================================= */
 
 #objectivePanel {
   position: absolute;
-  z-index: 9;
-  top: 76px;
+  z-index: 4;
+  top: calc(max(7px, var(--safe-top)) + 62px);
   left: 50%;
-  width: min(330px, calc(100vw - 300px));
-  transform: translateX(-50%);
+  width: min(290px, 36vw);
+  padding: 10px 15px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(8, 12, 18, 0.73);
   text-align: center;
+  transform: translateX(-50%);
   pointer-events: none;
 }
 
 #locationName {
-  display: inline-block;
-  padding: 7px 12px;
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  background: rgba(9, 13, 22, 0.75);
-  color: #f8fafc;
-  font-size: 13px;
-  font-weight: 700;
+  margin-bottom: 5px;
+  color: var(--accent-bright);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 #objectiveText {
-  margin-top: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: rgba(9, 13, 22, 0.68);
-  color: #fde68a;
-  font-size: 12px;
+  color: #e2e8f0;
+  font-size: 11px;
   line-height: 1.4;
 }
 
-/* Прицел */
+/* =========================================================
+   ПРИЦЕЛ И УВЕДОМЛЕНИЯ
+   ========================================================= */
 
 #crosshair {
   position: absolute;
-  z-index: 8;
+  z-index: 3;
   top: 50%;
   left: 50%;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
   transform: translate(-50%, -50%);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
   pointer-events: none;
 }
-
-#crosshair::before,
-#crosshair::after {
-  position: absolute;
-  content: "";
-  top: 50%;
-  left: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  transform: translate(-50%, -50%);
-  border-radius: 2px;
-}
-
-#crosshair::before {
-  width: 14px;
-  height: 2px;
-}
-
-#crosshair::after {
-  width: 2px;
-  height: 14px;
-}
-
-/* Уведомления */
 
 #notification {
   position: absolute;
@@ -372,117 +481,114 @@ input:focus {
   top: 22%;
   left: 50%;
   width: max-content;
-  max-width: calc(100vw - 32px);
+  max-width: min(85vw, 440px);
   padding: 12px 18px;
-  transform: translateX(-50%);
-  border: 1px solid rgba(234, 179, 8, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 12px;
-  background: rgba(9, 13, 22, 0.94);
-  color: #fef3c7;
-  font-size: 14px;
-  line-height: 1.4;
+  background: rgba(8, 12, 18, 0.94);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  color: white;
+  font-size: 13px;
   text-align: center;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  transform: translateX(-50%);
   pointer-events: none;
 }
 
-/* Панель взаимодействия */
-
 #targetPanel {
   position: absolute;
-  z-index: 12;
-  bottom: 155px;
+  z-index: 6;
+  bottom: 115px;
   left: 50%;
-  width: min(330px, calc(100vw - 32px));
-  padding: 13px;
-  transform: translateX(-50%);
+  width: min(280px, 45vw);
+  padding: 12px;
   border: 1px solid var(--border);
-  border-radius: 14px;
-  background: rgba(9, 13, 22, 0.92);
+  border-radius: 13px;
+  background: rgba(8, 12, 18, 0.9);
   text-align: center;
+  transform: translateX(-50%);
 }
 
 #targetName {
-  margin-bottom: 5px;
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 900;
 }
 
 #targetDescription {
-  margin-bottom: 10px;
+  margin: 6px 0 10px;
   color: var(--muted);
   font-size: 12px;
-  line-height: 1.4;
 }
 
 #interactButton {
-  width: 100%;
-  background: #854d0e;
-  border-color: #ca8a04;
-  font-weight: 700;
+  min-height: 36px;
+  padding: 8px 15px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #17130b;
+  font-weight: 900;
 }
 
-/* Панель предметов */
+/* =========================================================
+   ИНВЕНТАРЬ ВНИЗУ ЭКРАНА
+   ========================================================= */
 
 #hotbar {
   position: absolute;
-  z-index: 15;
-  bottom: 12px;
+  z-index: 7;
   left: 50%;
+  bottom: max(9px, var(--safe-bottom));
   display: flex;
   gap: 5px;
-  max-width: calc(100vw - 20px);
-  padding: 7px;
+  max-width: 62vw;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 13px;
+  background: rgba(6, 10, 16, 0.86);
   transform: translateX(-50%);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: rgba(9, 13, 22, 0.9);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
 }
 
 .inventory-slot {
   position: relative;
   display: flex;
-  flex: 0 0 54px;
+  flex: 0 0 clamp(42px, 6vw, 62px);
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 54px;
-  height: 65px;
-  padding: 4px;
-  border: 1px solid #475569;
-  border-radius: 9px;
-  background: rgba(30, 41, 59, 0.92);
+  width: clamp(42px, 6vw, 62px);
+  height: clamp(47px, 7vw, 62px);
+  padding: 3px;
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(35, 44, 57, 0.82);
 }
 
 .inventory-slot.selected {
-  border: 2px solid var(--accent);
-  background: rgba(120, 82, 13, 0.55);
-  box-shadow: 0 0 12px rgba(234, 179, 8, 0.15);
+  border: 2px solid var(--accent-bright);
+  background: rgba(231, 182, 93, 0.2);
+  box-shadow: 0 0 12px rgba(231, 182, 93, 0.16);
 }
 
 .slot-number {
   position: absolute;
   top: 3px;
   left: 5px;
-  color: #94a3b8;
+  color: #a9b5c5;
   font-size: 9px;
 }
 
 .slot-icon {
-  margin-top: 5px;
-  font-size: 23px;
-  line-height: 1.1;
+  font-size: clamp(16px, 2.5vw, 24px);
+  line-height: 1.2;
 }
 
 .slot-name {
-  width: 100%;
-  margin-top: 3px;
+  max-width: 100%;
   overflow: hidden;
-  color: #e2e8f0;
-  font-size: 9px;
-  text-align: center;
+  color: #cbd5e1;
+  font-size: 8px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -490,560 +596,800 @@ input:focus {
 .slot-count {
   position: absolute;
   right: 4px;
-  top: 3px;
-  color: #fde68a;
-  font-size: 10px;
-  font-weight: 800;
+  bottom: 3px;
+  color: var(--accent-bright);
+  font-size: 9px;
+  font-weight: 900;
 }
 
-/* Кнопки действий */
-
-#actionButtons {
-  position: absolute;
-  z-index: 14;
-  right: 12px;
-  bottom: 100px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  width: 145px;
-}
-
-#actionButtons button {
-  padding: 10px;
-  background: rgba(15, 23, 42, 0.9);
-  font-size: 12px;
-}
-
-#actionButtons button:active {
-  background: #854d0e;
-}
-
-/* Общие игровые панели */
-
-.game-panel {
-  position: absolute;
-  z-index: 60;
-  top: 50%;
-  left: 50%;
-  width: min(520px, calc(100vw - 28px));
-  max-height: min(75vh, 650px);
-  padding: 20px;
-  overflow-y: auto;
-  transform: translate(-50%, -50%);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: var(--panel);
-  box-shadow: 0 25px 90px rgba(0, 0, 0, 0.65);
-  overscroll-behavior: contain;
-}
-
-.game-panel h2 {
-  margin: 0 0 16px;
-  color: var(--accent);
-  font-size: 24px;
-}
-
-.panel-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  font-size: 20px;
-}
-
-.panel-description {
-  margin: 0 0 14px;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.panel-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.panel-actions button {
-  flex: 1;
-  min-width: 100px;
-}
-
-/* Предметы в инвентаре, крафте и магазине */
-
-#inventoryItems,
-#craftingItems,
-#shopItems,
-#sellItems {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-
-.item-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px;
-  border: 1px solid var(--border);
-  border-radius: 11px;
-  background: rgba(30, 41, 59, 0.6);
-}
-
-.item-icon {
-  display: grid;
-  flex: 0 0 42px;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border-radius: 9px;
-  background: #334155;
-  font-size: 23px;
-}
-
-.item-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.item-name {
-  margin-bottom: 4px;
-  font-size: 14px;
-  font-weight: 700;
-  overflow-wrap: anywhere;
-}
-
-.item-description {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.item-amount {
-  color: #fde68a;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.item-row button {
-  flex-shrink: 0;
-  padding: 8px 10px;
-  font-size: 12px;
-}
-
-/* Магазин */
-
-#shopMoney {
-  margin-bottom: 14px;
-  color: var(--accent);
-  font-weight: 800;
-}
-
-.shop-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.shop-tabs button {
-  flex: 1;
-}
-
-/* Пауза */
-
-#pausePanel {
-  text-align: center;
-}
-
-#pausePanel h2 {
-  margin-top: 8px;
-}
-
-#pausePanel button {
-  width: 100%;
-  margin-top: 9px;
-}
-
-/* Чат */
-
-#chatPanel {
-  position: absolute;
-  z-index: 18;
-  left: 12px;
-  bottom: 95px;
-  display: flex;
-  flex-direction: column;
-  width: min(310px, calc(100vw - 24px));
-  max-height: 230px;
-  border: 1px solid var(--border);
-  border-radius: 13px;
-  background: rgba(9, 13, 22, 0.82);
-  overflow: hidden;
-}
-
-#chatMessages {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-height: 45px;
-  max-height: 160px;
-  padding: 10px;
-  overflow-y: auto;
-  overflow-wrap: anywhere;
-  font-size: 12px;
-}
-
-.chat-message {
-  line-height: 1.4;
-}
-
-.chat-name {
-  color: #fde68a;
-  font-weight: 700;
-}
-
-#chatForm {
-  display: flex;
-  gap: 6px;
-  padding: 7px;
-  border-top: 1px solid var(--border);
-}
-
-#chatInput {
-  flex: 1;
-  min-width: 0;
-  padding: 9px;
-  font-size: 12px;
-}
-
-#chatForm button {
-  padding: 8px 10px;
-  font-size: 12px;
-}
-
-/* Экран проигрыша */
-
-#gameOverScreen {
-  position: absolute;
-  z-index: 100;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: rgba(3, 7, 18, 0.92);
-}
-
-.game-over-card {
-  width: min(420px, 100%);
-  padding: 28px;
-  border: 1px solid rgba(239, 68, 68, 0.45);
-  border-radius: 20px;
-  background: #111827;
-  text-align: center;
-}
-
-#gameOverTitle {
-  margin: 0 0 12px;
-  color: var(--red);
-  font-size: 30px;
-}
-
-#gameOverDescription {
-  margin-bottom: 20px;
-  color: #cbd5e1;
-  line-height: 1.5;
-}
-
-#restartButton {
-  width: 100%;
-  background: #854d0e;
-  font-weight: 800;
-}
-
-/* Мобильное управление */
+/* =========================================================
+   МОБИЛЬНЫЙ ДЖОЙСТИК И КНОПКИ
+   ========================================================= */
 
 #mobileControls {
-  display: none;
   position: absolute;
-  z-index: 16;
-  inset: auto 0 90px;
-  height: 150px;
+  z-index: 8;
+  inset: 0;
+  display: block;
   pointer-events: none;
 }
 
 #movementJoystick {
   position: absolute;
-  left: 18px;
-  bottom: 0;
-  width: 132px;
-  height: 132px;
-  border: 2px solid rgba(203, 213, 225, 0.45);
+  left: max(18px, env(safe-area-inset-left, 0px));
+  bottom: calc(max(18px, var(--safe-bottom)) + 65px);
+  width: clamp(104px, 17vw, 150px);
+  height: clamp(104px, 17vw, 150px);
+  border: 2px solid rgba(255, 255, 255, 0.23);
   border-radius: 50%;
-  background: rgba(15, 23, 42, 0.48);
-  pointer-events: auto;
+  background: rgba(9, 15, 23, 0.42);
+  box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.15);
   touch-action: none;
+  pointer-events: auto;
+}
+
+#movementJoystick::before,
+#movementJoystick::after {
+  position: absolute;
+  content: "";
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
 }
 
 #movementJoystick::before {
-  position: absolute;
   top: 50%;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+}
+
+#movementJoystick::after {
+  top: 10%;
+  bottom: 10%;
   left: 50%;
-  width: 48px;
-  height: 48px;
-  content: "";
-  transform: translate(-50%, -50%);
-  border: 2px solid rgba(226, 232, 240, 0.5);
-  border-radius: 50%;
-  background: rgba(148, 163, 184, 0.25);
+  width: 1px;
 }
 
 .joystick-knob {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 43px;
-  height: 43px;
-  transform: translate(-50%, -50%);
-  border: 2px solid rgba(255, 255, 255, 0.55);
+  width: 43%;
+  height: 43%;
+  border: 2px solid rgba(255, 255, 255, 0.42);
   border-radius: 50%;
-  background: rgba(203, 213, 225, 0.4);
+  background: rgba(210, 222, 237, 0.28);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.22);
+  transform: translate(-50%, -50%);
   pointer-events: none;
 }
 
 #mobileActionButtons {
   position: absolute;
-  right: 16px;
-  bottom: 0;
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(max(17px, var(--safe-bottom)) + 65px);
+  display: grid;
+  grid-template-columns: repeat(2, clamp(49px, 8vw, 66px));
+  gap: 9px;
   pointer-events: auto;
 }
 
 #mobileActionButtons button {
-  display: grid;
-  place-items: center;
-  width: 54px;
-  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(49px, 8vw, 66px);
+  height: clamp(49px, 8vw, 66px);
   padding: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 50%;
-  background: rgba(15, 23, 42, 0.78);
-  font-size: 11px;
+  background: rgba(11, 17, 26, 0.7);
+  font-size: 10px;
+  font-weight: 800;
   text-align: center;
   touch-action: none;
 }
 
 #mobileJumpButton {
-  width: 62px !important;
-  height: 62px !important;
-  background: rgba(133, 77, 14, 0.9) !important;
+  border-color: rgba(231, 182, 93, 0.7) !important;
+  background: rgba(113, 81, 33, 0.75) !important;
 }
 
-@media (pointer: coarse), (max-width: 760px) {
-  #mobileControls {
-    display: block;
+#mobileInteractButton {
+  background: rgba(38, 91, 65, 0.78) !important;
+}
+
+#mobileDropButton {
+  background: rgba(75, 49, 51, 0.78) !important;
+}
+
+/* Зона взгляда: JS сможет использовать свободную правую область */
+#cameraLookZone {
+  position: absolute;
+  z-index: 1;
+  top: 75px;
+  right: 0;
+  bottom: 100px;
+  width: 58%;
+  touch-action: none;
+  pointer-events: auto;
+}
+
+/* =========================================================
+   ДОПОЛНИТЕЛЬНЫЕ ДЕЙСТВИЯ
+   ========================================================= */
+
+#actionButtons {
+  position: absolute;
+  z-index: 7;
+  top: 125px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 106px;
+}
+
+#actionButtons button {
+  min-height: 35px;
+  padding: 7px 8px;
+  border-radius: 9px;
+  background: rgba(8, 12, 18, 0.77);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+#saveGameButton {
+  border-color: rgba(127, 202, 140, 0.4);
+}
+
+/* =========================================================
+   ЧАТ
+   ========================================================= */
+
+#chatPanel {
+  position: absolute;
+  z-index: 9;
+  left: 10px;
+  bottom: 110px;
+  display: flex;
+  flex-direction: column;
+  width: min(290px, 35vw);
+  max-height: 34vh;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(7, 11, 17, 0.76);
+  overflow: hidden;
+}
+
+#chatHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  padding: 5px 9px;
+  border-bottom: 1px solid var(--border);
+  color: #dce4ee;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+#toggleChatButton {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+}
+
+#chatMessages {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 30px;
+  max-height: 130px;
+  padding: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+
+.chat-message {
+  color: #dce4ee;
+  line-height: 1.4;
+}
+
+.chat-message strong {
+  color: var(--accent-bright);
+}
+
+#chatForm {
+  display: flex;
+  gap: 5px;
+  padding: 6px;
+  border-top: 1px solid var(--border);
+}
+
+#chatInput {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+#chatForm button {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #17130b;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+/* =========================================================
+   ОБЩИЕ ВСПЛЫВАЮЩИЕ ПАНЕЛИ
+   ========================================================= */
+
+.game-panel {
+  position: absolute;
+  z-index: 200;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  width: min(520px, calc(100vw - 30px));
+  max-height: min(82dvh, 620px);
+  padding: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  background: rgba(10, 15, 23, 0.97);
+  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.55);
+  transform: translate(-50%, -50%);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.panel-header h2,
+.game-panel h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.panel-close {
+  flex-shrink: 0;
+  width: 35px;
+  height: 35px;
+  border-radius: 9px;
+  font-size: 20px;
+}
+
+.panel-content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.game-panel button:not(.panel-close) {
+  min-height: 39px;
+  padding: 9px 12px;
+  border-radius: 9px;
+}
+
+.game-panel p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+#playersConnectionInfo {
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+#playersList,
+#inventoryItems,
+#craftingItems,
+#shopItems,
+#sellItems,
+#cityList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.player-row,
+.inventory-item,
+.crafting-item,
+.shop-item,
+.city-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.player-row small,
+.inventory-item small,
+.shop-item small,
+.city-item small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.player-online {
+  color: var(--success);
+}
+
+.player-offline {
+  color: var(--muted);
+}
+
+#refreshPlayersButton,
+#inviteInfoButton,
+#useItemButton,
+#dropItemButton,
+#travelButton,
+#applySettingsButton {
+  width: 100%;
+  margin-top: 9px;
+}
+
+#shopMoney {
+  margin: 12px 0;
+  color: var(--accent-bright);
+  font-weight: 900;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 14px 0;
+  color: #dbe3ed;
+  font-size: 13px;
+}
+
+.setting-row input[type="range"] {
+  width: 45%;
+  padding: 0;
+}
+
+.setting-row select {
+  max-width: 50%;
+}
+
+/* =========================================================
+   КАТ-СЦЕНА
+   ========================================================= */
+
+#cutsceneScreen {
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #05070a;
+}
+
+#cutsceneCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.cutscene-vignette {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background:
+    linear-gradient(0deg, rgba(0, 0, 0, 0.88), transparent 45%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.42), transparent 30%),
+    radial-gradient(ellipse, transparent 35%, rgba(0, 0, 0, 0.5) 100%);
+  pointer-events: none;
+}
+
+#cutsceneTop {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding:
+    max(18px, var(--safe-top))
+    max(20px, env(safe-area-inset-right, 0px))
+    10px
+    max(20px, env(safe-area-inset-left, 0px));
+}
+
+.cutscene-chapter {
+  color: var(--accent-bright);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 3px;
+}
+
+#skipCutsceneButton {
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  background: rgba(10, 14, 20, 0.65);
+  font-size: 12px;
+}
+
+#cutsceneSubtitles {
+  position: relative;
+  z-index: 2;
+  width: min(850px, 90%);
+  margin: auto auto max(32px, var(--safe-bottom));
+  padding: 0 20px;
+  text-shadow: 0 2px 12px #000;
+}
+
+#cutsceneSpeaker {
+  margin-bottom: 10px;
+  color: var(--accent-bright);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+#cutsceneText {
+  max-width: 800px;
+  min-height: 55px;
+  font-size: clamp(17px, 3vw, 29px);
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+#cutsceneControls {
+  position: relative;
+  z-index: 2;
+  padding: 0 20px max(18px, var(--safe-bottom));
+}
+
+#cutsceneProgressTrack {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+#cutsceneProgress {
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s linear;
+}
+
+/* =========================================================
+   ПАУЗА И КОНЕЦ ИГРЫ
+   ========================================================= */
+
+#pausePanel {
+  z-index: 300;
+}
+
+#pausePanel button,
+#gameOverScreen button {
+  width: 100%;
+  margin-top: 9px;
+}
+
+#gameOverScreen {
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(3, 5, 8, 0.91);
+}
+
+.game-over-card {
+  width: min(420px, 100%);
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #0d131c;
+  text-align: center;
+}
+
+#gameOverTitle {
+  margin: 0 0 12px;
+  font-size: 30px;
+}
+
+#gameOverDescription {
+  margin-bottom: 22px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+#restartButton {
+  background: var(--accent);
+  color: #17130b;
+  font-weight: 900;
+}
+
+#fpsCounter {
+  position: absolute;
+  z-index: 15;
+  top: 70px;
+  right: 10px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #9df2a7;
+  font-family: monospace;
+  font-size: 10px;
+  pointer-events: none;
+}
+
+/* =========================================================
+   КОМПЬЮТЕР: КЛАВИАТУРА И МЫШЬ
+   ========================================================= */
+
+@media (hover: hover) and (pointer: fine) {
+  button:hover:not(:disabled) {
+    border-color: rgba(231, 182, 93, 0.55);
+    background-color: rgba(61, 72, 88, 0.96);
   }
 
-  #actionButtons {
-    display: none;
+  #startGameButton:hover {
+    background: var(--accent-bright);
   }
+}
 
-  #statusPanel {
-    top: 72px;
-    left: 8px;
-    width: 175px;
-    gap: 7px;
-    padding: 9px;
-  }
+/* =========================================================
+   ТЕЛЕФОН В ГОРИЗОНТАЛЬНОМ ПОЛОЖЕНИИ
+   ========================================================= */
 
-  .stat-row {
-    grid-template-columns: 48px minmax(30px, 1fr) 24px;
-    gap: 5px;
-    font-size: 10px;
-  }
-
-  .stat-track {
-    height: 7px;
-  }
-
-  #moneyValue {
-    font-size: 12px;
-  }
-
-  #objectivePanel {
-    top: 72px;
-    left: auto;
-    right: 8px;
-    width: min(180px, calc(100vw - 205px));
-    transform: none;
-  }
-
-  #locationName {
-    font-size: 11px;
-  }
-
-  #objectiveText {
-    padding: 6px;
-    font-size: 10px;
+@media (orientation: landscape) and (max-height: 560px) {
+  :root {
+    --top-height: 40px;
   }
 
   #topBar {
-    top: 7px;
+    min-height: 40px;
+    padding: 4px 7px;
+    gap: 5px;
+  }
+
+  #topBar button {
+    min-height: 29px;
+    padding: 4px 7px;
+    font-size: 10px;
+  }
+
+  #statusPanel {
+    top: calc(max(5px, var(--safe-top)) + 46px);
     left: 7px;
-    right: 7px;
+    width: 145px;
     padding: 7px 9px;
   }
 
-  .top-info {
-    gap: 6px 10px;
-    font-size: 11px;
-  }
-
-  #pauseButton {
-    padding: 7px 9px;
-    font-size: 12px;
-  }
-
-  #chatPanel {
-    left: 8px;
-    bottom: 238px;
-    width: min(240px, calc(100vw - 16px));
-    max-height: 145px;
-  }
-
-  #chatMessages {
-    max-height: 95px;
-    padding: 7px;
-    font-size: 11px;
-  }
-
-  #chatInput {
-    padding: 8px;
-  }
-
-  #hotbar {
-    bottom: 7px;
-    gap: 3px;
-    padding: 5px;
-  }
-
-  .inventory-slot {
-    flex-basis: clamp(35px, 10.4vw, 48px);
-    width: clamp(35px, 10.4vw, 48px);
-    height: 54px;
-    padding: 2px;
-  }
-
-  .slot-icon {
-    font-size: 19px;
-  }
-
-  .slot-name {
-    font-size: 8px;
-  }
-
-  .slot-number {
-    font-size: 8px;
-  }
-
-  .slot-count {
+  .status-row {
+    grid-template-columns: 15px 1fr auto;
+    gap: 4px;
+    margin: 4px 0;
     font-size: 9px;
   }
 
-  #targetPanel {
-    bottom: 160px;
+  .status-track {
+    height: 4px;
   }
 
-  .game-panel {
-    width: calc(100vw - 20px);
-    max-height: 78vh;
-    padding: 16px;
+  #moneyValue {
+    margin-top: 5px;
+    padding-top: 5px;
+    font-size: 10px;
   }
 
-  .game-panel h2 {
-    font-size: 21px;
+  #objectivePanel {
+    top: calc(max(5px, var(--safe-top)) + 46px);
+    width: min(240px, 34vw);
+    padding: 7px 10px;
   }
 
-  .item-row {
-    gap: 7px;
-    padding: 8px;
+  #locationName {
+    font-size: 10px;
   }
 
-  .item-icon {
-    flex-basis: 34px;
-    width: 34px;
-    height: 34px;
-    font-size: 19px;
-  }
-
-  .item-name {
-    font-size: 12px;
-  }
-
-  .item-description {
-    font-size: 11px;
-  }
-}
-
-@media (max-width: 390px) {
-  #chatPanel {
-    width: 205px;
+  #objectiveText {
+    font-size: 9px;
   }
 
   #movementJoystick {
-    left: 10px;
-    width: 115px;
-    height: 115px;
+    left: max(12px, env(safe-area-inset-left, 0px));
+    bottom: calc(max(9px, var(--safe-bottom)) + 50px);
+    width: clamp(86px, 18vh, 120px);
+    height: clamp(86px, 18vh, 120px);
   }
 
   #mobileActionButtons {
-    right: 8px;
+    right: max(12px, env(safe-area-inset-right, 0px));
+    bottom: calc(max(9px, var(--safe-bottom)) + 50px);
+    grid-template-columns: repeat(2, clamp(42px, 9vh, 55px));
     gap: 6px;
   }
 
   #mobileActionButtons button {
-    width: 47px;
-    height: 47px;
-    font-size: 10px;
+    width: clamp(42px, 9vh, 55px);
+    height: clamp(42px, 9vh, 55px);
+    font-size: 9px;
   }
 
-  #mobileJumpButton {
-    width: 55px !important;
-    height: 55px !important;
-  }
-}
-
-@media (max-height: 500px) {
-  #mobileControls {
-    bottom: 72px;
-    height: 110px;
-  }
-
-  #movementJoystick {
-    width: 100px;
-    height: 100px;
-  }
-
-  #chatPanel {
-    max-height: 100px;
-    bottom: 75px;
-  }
-
-  #chatMessages {
-    max-height: 55px;
+  #hotbar {
+    bottom: max(5px, var(--safe-bottom));
+    gap: 3px;
+    padding: 4px;
   }
 
   .inventory-slot {
-    height: 48px;
+    flex-basis: clamp(36px, 7vh, 48px);
+    width: clamp(36px, 7vh, 48px);
+    height: clamp(37px, 8vh, 48px);
+  }
+
+  .slot-icon {
+    font-size: 17px;
+  }
+
+  .slot-name {
+    font-size: 7px;
+  }
+
+  #chatPanel {
+    left: 7px;
+    bottom: 62px;
+    width: min(230px, 29vw);
+    max-height: 28vh;
+  }
+
+  #chatMessages {
+    max-height: 65px;
+    font-size: 9px;
+  }
+
+  #chatInput {
+    padding: 6px;
+    font-size: 10px;
+  }
+
+  #actionButtons {
+    top: 94px;
+    right: 7px;
+    gap: 4px;
+    width: 90px;
+  }
+
+  #actionButtons button {
+    min-height: 28px;
+    padding: 5px;
+    font-size: 9px;
   }
 
   #targetPanel {
-    bottom: 120px;
+    bottom: 75px;
+    padding: 8px;
+  }
+
+  .game-panel {
+    width: min(520px, 78vw);
+    max-height: 88dvh;
+    padding: 14px;
+  }
+
+  .game-panel h2 {
+    font-size: 17px;
+  }
+
+  #cutsceneText {
+    min-height: 35px;
+    font-size: clamp(15px, 2.8vw, 24px);
+  }
+
+  #cutsceneSubtitles {
+    margin-bottom: 18px;
+  }
+}
+
+/* =========================================================
+   УЗКИЙ ЭКРАН И ПОРТРЕТНЫЙ РЕЖИМ
+   ========================================================= */
+
+@media (orientation: portrait) {
+  #statusPanel {
+    width: min(175px, 43vw);
+  }
+
+  #objectivePanel {
+    top: 95px;
+    width: min(220px, 46vw);
+  }
+
+  #chatPanel {
+    bottom: 175px;
+    width: min(280px, 56vw);
+  }
+
+  #hotbar {
+    max-width: 96vw;
+    gap: 3px;
+  }
+
+  .inventory-slot {
+    flex-basis: clamp(35px, 10vw, 48px);
+    width: clamp(35px, 10vw, 48px);
+    height: 46px;
+  }
+
+  #movementJoystick {
+    bottom: calc(max(15px, var(--safe-bottom)) + 70px);
+  }
+
+  #mobileActionButtons {
+    bottom: calc(max(15px, var(--safe-bottom)) + 70px);
+  }
+
+  #actionButtons {
+    top: 180px;
+  }
+}
+
+/* =========================================================
+   МАЛЕНЬКИЕ ЭКРАНЫ
+   ========================================================= */
+
+@media (max-width: 480px) {
+  .menu-card {
+    padding: 22px;
+  }
+
+  #connectionStatus {
+    display: none;
+  }
+
+  #statusPanel {
+    padding: 8px;
+  }
+
+  #chatHeader {
+    font-size: 10px;
+  }
+
+  .game-panel {
+    padding: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
