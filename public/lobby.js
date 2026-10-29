@@ -3,6 +3,13 @@ import { Multiplayer } from './multiplayer.js';
 
 const $ = (id) => document.getElementById(id);
 const mp = new Multiplayer();
+window.lockedHomeMultiplayer = mp;
+
+window.dispatchEvent(
+  new CustomEvent('lockedhome:multiplayer-ready', {
+    detail: { multiplayer: mp }
+  })
+);
 
 let connected = false;
 let ready = false;
