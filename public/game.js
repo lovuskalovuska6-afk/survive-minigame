@@ -1891,48 +1891,51 @@ function setupChat() {
   if (!form || !input || !messages) return;
 
   if (typeof window.io === 'function') {
-  const connectToMultiplayer = () => {
-    const mp = window.lockedHomeMultiplayer;
+    let handlersAttached = false;
 
-    if (!mp || !mp.socket) {
-      setTimeout(connectToMultiplayer, 300);
-      return;
-    }
+    const connectToMultiplayer = () => {
+      const mp = window.lockedHomeMultiplayer;
 
-    socket = mp.socket;
+      if (!mp || !mp.socket) {
+        setTimeout(connectToMultiplayer, 300);
+        return;
+      }
 
-    const onConnected = () => {
-      addChatMessage('Система', 'Подключение к серверу установлено');
+      socket = mp.socket;
+
+      if (handlersAttached) return;
+      handlersAttached = true;
+
+      socket.on('connect', () => {
+        addChatMessage('Система', 'Подключение к серверу установлено');
+      });
+
+      socket.on('disconnect', () => {
+        addChatMessage('Система', 'Соединение с сервером потеряно');
+      });
+
+      socket.on('chat:message', (data) => {
+        if (!data) return;
+
+        if (typeof data === 'string') {
+          addChatMessage('Игрок', data);
+        } else {
+          addChatMessage(
+            data.name || data.playerName || 'Игрок',
+            data.message || data.text || ''
+          );
+        }
+      });
+
+      if (socket.connected) {
+        addChatMessage('Система', 'Подключение к серверу установлено');
+      }
     };
 
-    if (socket.connected) {
-      onConnected();
-    } else {
-      socket.once('connect', onConnected);
-    }
-  };
-
-  connectToMultiplayer();
-
-    socket.on('disconnect', () => {
-      addChatMessage('Система', 'Соединение с сервером потеряно');
-    });
-
-    socket.on('chat:message', (data) => {
-      if (!data) return;
-
-      if (typeof data === 'string') {
-        addChatMessage('Игрок', data);
-      } else {
-        addChatMessage(
-          data.name || data.playerName || 'Игрок',
-          data.message || data.text || ''
-        );
-      }
-    });
+    connectToMultiplayer();
   } else {
     addChatMessage('Система', 'Чат работает локально без подключения к серверу');
-  }
+}
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
