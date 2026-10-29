@@ -1891,14 +1891,28 @@ function setupChat() {
   if (!form || !input || !messages) return;
 
   if (typeof window.io === 'function') {
-    socket = window.io();
+  const connectToMultiplayer = () => {
+    const mp = window.lockedHomeMultiplayer;
 
-    socket.on('connect', () => {
+    if (!mp || !mp.socket) {
+      setTimeout(connectToMultiplayer, 300);
+      return;
+    }
+
+    socket = mp.socket;
+
+    const onConnected = () => {
       addChatMessage('Система', 'Подключение к серверу установлено');
-      socket.emit('player:join', {
-        name: state.playerName
-      });
-    });
+    };
+
+    if (socket.connected) {
+      onConnected();
+    } else {
+      socket.once('connect', onConnected);
+    }
+  };
+
+  connectToMultiplayer();
 
     socket.on('disconnect', () => {
       addChatMessage('Система', 'Соединение с сервером потеряно');
