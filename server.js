@@ -4,6 +4,7 @@
 const express = require('express');
 const http = require('http');
 const path = require('path');
+const crypto = require('crypto');
 const { Server } = require('socket.io');
 
 const app = express();
@@ -16,245 +17,208 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 3000;
-const MAX_NICKNAME_LENGTH = 20;
-const MAX_CHAT_LENGTH = 180;
-const COOP_COUNTDOWN_SECONDS = 3;
+const MAX_NAME = 20;
+const MAX_CHAT = 180;
+const MAX_PLAYERS = 2;
+const TIME_OPTIONS = [0.25, 0.5, 1, 2, 5, 10, 30, 60];
+
+const rooms = new Map();
+const players = new Map();
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-const ROOM_CONFIG = {
-  solo1: { name: 'Одиночная #1', mode: 'solo', maxPlayers: 1 },
-  solo2: { name: 'Одиночная #2', mode: 'solo', maxPlayers: 1 },
-  coop1: { name: 'Кооператив #1', mode: 'coop', maxPlayers: 2 },
-  coop2: { name: 'Кооператив #2', mode: 'coop', maxPlayers: 2 }
-};
-
-const gameRooms = {};
-
-for (const [id, config] of Object.entries(ROOM_CONFIG)) {
-  gameRooms[id] = {
-    ...config,
-    players: {},
-    startedAt: null,
-    countdownTimer: null,
-    countdownValue: null
-  };
-}
-
-const connectedPlayers = new Map();
-
-function cleanText(value, maxLength = MAX_CHAT_LENGTH) {
+function clean(value, maxLength = MAX_CHAT) {
   if (typeof value !== 'string') return '';
-
   return value
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
     .trim()
     .slice(0, maxLength);
 }
 
-function getPublicPlayer(player) {
+function makeCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code;
+
+  do {
+    code = Array.from(
+      { length: 5 },
+      () => alphabet[crypto.randomInt(alphabet.length)]
+    ).join('');
+  } while (rooms.has(code));
+
+  return code;
+}
+
+function publicPlayer(player) {
   return {
     id: player.id,
-    name: player.nickname,
-    nickname: player.nickname,
+    name: player.name,
+    nickname: player.name,
     x: player.x,
     y: player.y,
     z: player.z,
     rotation: player.rotation,
-    animation: player.animation,
     health: player.health,
-    roomId: player.roomId
+    ready: player.ready
   };
 }
 
-function getRoomPlayers(room) {
-  return Object.values(room.players).map(getPublicPlayer);
-}
-
-function getLobbyState() {
-  const result = {};
-
-  for (const [roomId, room] of Object.entries(gameRooms)) {
-    const count = Object.keys(room.players).length;
-
-    result[roomId] = {
-      id: roomId,
-      name: room.name,
-      mode: room.mode,
-      players: count,
-      count,
-      maxPlayers: room.maxPlayers,
-      capacity: room.maxPlayers,
-      full: count >= room.maxPlayers
-    };
-  }
-
-  return result;
-}
-
-function sendRoomState(roomId) {
-  const room = gameRooms[roomId];
-  if (!room) return;
-
-  io.to(roomId).emit('room:state', {
-    roomId,
-    name: room.name,
+function roomState(room) {
+  return {
+    roomId: room.code,
+    code: room.code,
     mode: room.mode,
+    ownerId: room.ownerId,
     maxPlayers: room.maxPlayers,
-    players: getRoomPlayers(room),
-    started: room.startedAt !== null,
-    countdown: room.countdownValue
-  });
-
-  io.emit('lobby:rooms', getLobbyState());
+    timeScale: room.timeScale,
+    started: room.started,
+    players: [...room.players]
+      .map(id => players.get(id))
+      .filter(Boolean)
+      .map(publicPlayer)
+  };
 }
 
-function cancelCountdown(room) {
-  if (room.countdownTimer) {
-    clearInterval(room.countdownTimer);
-    room.countdownTimer = null;
+function getRooms() {
+  return Object.fromEntries(
+    [...rooms.entries()].map(([code, room]) => [
+      code,
+      {
+        id: code,
+        roomId: code,
+        code,
+        name: 'Комната ' + code,
+        mode: room.mode,
+        players: room.players.size,
+        count: room.players.size,
+        maxPlayers: room.maxPlayers,
+        capacity: room.maxPlayers,
+        full: room.players.size >= room.maxPlayers,
+        started: room.started
+      }
+    ])
+  );
+}
+
+function sendRoom(room) {
+  io.to(room.code).emit('room:state', roomState(room));
+  io.emit('lobby:rooms', getRooms());
+}
+
+function sendRoomError(socket, message) {
+  socket.emit('room:error', { message });
+}
+
+function createLoot() {
+  const types = [
+    'wood', 'stone', 'scrap', 'food', 'water',
+    'berries', 'medkit', 'knife', 'pistol', 'ammo', 'filter'
+  ];
+
+  const items = [];
+
+  for (let i = 0; i < 22; i++) {
+    const x = Math.round((Math.random() * 140 - 70) * 10) / 10;
+    const z = Math.round((Math.random() * 140 - 70) * 10) / 10;
+
+    if (Math.abs(x) < 12 && Math.abs(z) < 12) continue;
+
+    const itemId = types[crypto.randomInt(types.length)];
+
+    items.push({
+      id: 'loot-' + i,
+      itemId,
+      amount: itemId === 'ammo'
+        ? crypto.randomInt(4, 13)
+        : 1,
+      x,
+      z
+    });
   }
 
-  room.countdownValue = null;
+  return items;
 }
 
-function startRoom(roomId) {
-  const room = gameRooms[roomId];
-  if (!room || room.startedAt !== null) return;
+function startRoom(room, socket) {
+  if (!room || room.started) return;
 
-  const count = Object.keys(room.players).length;
-
-  if (room.mode === 'coop' && count < 2) {
+  if (room.mode === 'coop' && room.players.size !== 2) {
+    if (socket) {
+      sendRoomError(socket, 'Для старта нужны два игрока в комнате.');
+    }
     return;
   }
 
-  if (room.mode === 'solo' && count < 1) {
+  if (
+    room.mode === 'coop' &&
+    [...room.players].some(id => !players.get(id)?.ready)
+  ) {
+    io.to(room.code).emit('game:waiting', {
+      message: 'Оба игрока должны нажать «Готов».'
+    });
     return;
   }
 
-  cancelCountdown(room);
+  room.started = true;
   room.startedAt = Date.now();
 
-  io.to(roomId).emit('game:start', {
-    roomId,
+  io.to(room.code).emit('game:start', {
+    roomId: room.code,
     mode: room.mode,
     startedAt: room.startedAt,
-    message: 'Выживайте вместе 14 дней!'
+    timeScale: room.timeScale,
+    loot: room.loot
   });
 
-  sendRoomState(roomId);
-
-  console.log(`[GAME] ${roomId}: старт, игроков ${count}`);
+  sendRoom(room);
 }
 
-function beginCoopCountdown(roomId) {
-  const room = gameRooms[roomId];
-  if (!room || room.mode !== 'coop') return;
-  if (room.startedAt !== null || room.countdownTimer) return;
+function leaveRoom(socket) {
+  const player = players.get(socket.id);
 
-  if (Object.keys(room.players).length < 2) {
-    io.to(roomId).emit('game:waiting', {
-      roomId,
-      message: 'Ожидаем второго игрока...'
-    });
-    return;
-  }
-
-  room.countdownValue = COOP_COUNTDOWN_SECONDS;
-
-  io.to(roomId).emit('game:countdown', {
-    roomId,
-    seconds: room.countdownValue,
-    message: 'Приготовьтесь! Игра скоро начнётся.'
-  });
-
-  sendRoomState(roomId);
-
-  room.countdownTimer = setInterval(() => {
-    const currentCount = Object.keys(room.players).length;
-
-    if (currentCount < 2) {
-      cancelCountdown(room);
-
-      io.to(roomId).emit('game:waiting', {
-        roomId,
-        message: 'Игрок вышел. Ожидаем второго игрока...'
-      });
-
-      sendRoomState(roomId);
-      return;
-    }
-
-    room.countdownValue -= 1;
-
-    if (room.countdownValue <= 0) {
-      cancelCountdown(room);
-      startRoom(roomId);
-      return;
-    }
-
-    io.to(roomId).emit('game:countdown', {
-      roomId,
-      seconds: room.countdownValue,
-      message: 'Приготовьтесь! Игра скоро начнётся.'
-    });
-
-    sendRoomState(roomId);
-  }, 1000);
-}
-
-function leaveCurrentRoom(socket) {
-  const player = connectedPlayers.get(socket.id);
   if (!player || !player.roomId) return;
 
-  const oldRoomId = player.roomId;
-  const room = gameRooms[oldRoomId];
+  const code = player.roomId;
+  const room = rooms.get(code);
 
   if (room) {
-    delete room.players[socket.id];
+    room.players.delete(socket.id);
 
-    if (room.mode === 'coop' && room.countdownTimer) {
-      cancelCountdown(room);
+    if (room.players.size === 0) {
+      rooms.delete(code);
+    } else {
+      if (room.ownerId === socket.id) {
+        room.ownerId = [...room.players][0];
+      }
 
-      io.to(oldRoomId).emit('game:waiting', {
-        roomId: oldRoomId,
-        message: 'Игрок вышел. Ожидаем второго игрока...'
-      });
-    }
+      if (!room.started) {
+        for (const id of room.players) {
+          const remaining = players.get(id);
+          if (remaining) remaining.ready = false;
+        }
+      }
 
-    if (Object.keys(room.players).length === 0) {
-      cancelCountdown(room);
-      room.startedAt = null;
-    } else if (room.mode === 'coop' && room.startedAt === null) {
-      io.to(oldRoomId).emit('game:waiting', {
-        roomId: oldRoomId,
-        message: 'Ожидаем второго игрока...'
+      sendRoom(room);
+
+      io.to(code).emit('chat:system', {
+        text: player.name + ' покинул комнату.'
       });
     }
   }
 
-  socket.leave(oldRoomId);
+  socket.leave(code);
+
   player.roomId = null;
+  player.ready = false;
 
-  socket.emit('room:left', { roomId: oldRoomId });
-
-  io.to(oldRoomId).emit('player:left', {
-    id: socket.id,
-    name: player.nickname
-  });
-
-  io.to(oldRoomId).emit('chat:system', {
-    text: `${player.nickname} покинул комнату.`,
-    time: Date.now()
-  });
-
-  sendRoomState(oldRoomId);
+  socket.emit('room:left', { roomId: code });
+  io.emit('lobby:rooms', getRooms());
 }
 
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
-    game: 'THE LOCKED HOME: 14 DAYS',
+    game: 'THE LOCKED HOME: 30 DAYS',
     online: io.engine.clientsCount
   });
 });
@@ -262,197 +226,254 @@ app.get('/health', (req, res) => {
 app.get('/api/status', (req, res) => {
   res.json({
     online: io.engine.clientsCount,
-    rooms: getLobbyState()
+    rooms: getRooms()
   });
 });
 
-io.on('connection', (socket) => {
+io.on('connection', socket => {
   const player = {
     id: socket.id,
-    nickname: `Игрок${Math.floor(100 + Math.random() * 900)}`,
+    name: 'Игрок' + crypto.randomInt(100, 1000),
     roomId: null,
     x: 0,
-    y: 0,
-    z: 0,
+    y: 1.7,
+    z: 12,
     rotation: 0,
-    animation: 'idle',
-    health: 100
+    health: 100,
+    ready: false
   };
 
-  connectedPlayers.set(socket.id, player);
+  players.set(socket.id, player);
 
   socket.emit('server:ready', {
     id: socket.id,
-    nickname: player.nickname,
-    rooms: getLobbyState(),
+    nickname: player.name,
+    rooms: getRooms(),
     online: io.engine.clientsCount
   });
 
-  socket.emit('lobby:rooms', getLobbyState());
+  socket.emit('lobby:rooms', getRooms());
   io.emit('online:count', io.engine.clientsCount);
 
-  socket.on('player:join', (data = {}) => {
-    const nickname = cleanText(
-      data.name || data.nickname,
-      MAX_NICKNAME_LENGTH
-    );
+  socket.on('player:join', data => {
+    const name = clean(data?.name || data?.nickname, MAX_NAME);
 
-    if (nickname) {
-      player.nickname = nickname;
-    }
+    if (name) player.name = name;
 
     socket.emit('profile:updated', {
-      nickname: player.nickname
+      nickname: player.name
     });
 
-    if (player.roomId) sendRoomState(player.roomId);
+    if (player.roomId && rooms.has(player.roomId)) {
+      sendRoom(rooms.get(player.roomId));
+    }
   });
 
-  socket.on('profile:set', (data = {}) => {
-    const nickname = cleanText(data.nickname, MAX_NICKNAME_LENGTH);
+  socket.on('profile:set', data => {
+    const name = clean(data?.nickname, MAX_NAME);
 
-    if (!nickname) {
+    if (!name) {
       socket.emit('profile:error', {
         message: 'Введи имя игрока.'
       });
       return;
     }
 
-    player.nickname = nickname;
+    player.name = name;
 
     socket.emit('profile:updated', {
-      nickname: player.nickname
+      nickname: player.name
     });
 
-    if (player.roomId) sendRoomState(player.roomId);
+    if (player.roomId && rooms.has(player.roomId)) {
+      sendRoom(rooms.get(player.roomId));
+    }
   });
 
-  socket.on('room:join', (data = {}) => {
-    const roomId = cleanText(data.roomId, 20);
-    const room = gameRooms[roomId];
+  socket.on('room:create', data => {
+    leaveRoom(socket);
+
+    const mode = data?.mode === 'solo' ? 'solo' : 'coop';
+    const requestedScale = Number(data?.timeScale);
+
+    const timeScale = TIME_OPTIONS.includes(requestedScale)
+      ? requestedScale
+      : 1;
+
+    const code = makeCode();
+
+    const room = {
+      code,
+      mode,
+      ownerId: socket.id,
+      maxPlayers: mode === 'solo' ? 1 : MAX_PLAYERS,
+      timeScale,
+      players: new Set([socket.id]),
+      started: false,
+      startedAt: null,
+      loot: createLoot(),
+      collected: new Set()
+    };
+
+    rooms.set(code, room);
+
+    player.roomId = code;
+    player.ready = false;
+    player.x = 0;
+    player.y = 1.7;
+    player.z = 12;
+
+    socket.join(code);
+
+    socket.emit('room:created', {
+      roomId: code,
+      code,
+      mode,
+      timeScale
+    });
+
+    socket.emit('room:joined', roomState(room));
+
+    sendRoom(room);
+
+    if (mode === 'solo') {
+      startRoom(room, socket);
+    } else {
+      socket.emit('game:waiting', {
+        message: 'Комната создана. Отправь код другу и дождись его подключения.'
+      });
+    }
+  });
+
+  socket.on('room:join', data => {
+    const code = clean(
+      data?.roomId || data?.code,
+      10
+    ).toUpperCase();
+
+    const room = rooms.get(code);
 
     if (!room) {
-      socket.emit('room:error', {
-        message: 'Такой комнаты не существует.'
-      });
+      sendRoomError(socket, 'Комната не найдена. Проверь код.');
       return;
     }
 
-    if (player.roomId === roomId) {
-      socket.emit('room:joined', {
-        roomId,
-        name: room.name,
-        mode: room.mode,
-        players: getRoomPlayers(room)
-      });
+    if (room.started) {
+      sendRoomError(socket, 'Игра в этой комнате уже началась.');
       return;
     }
 
-    if (room.startedAt !== null) {
-      socket.emit('room:error', {
-        message: 'Игра в этой комнате уже началась.'
-      });
+    if (room.players.size >= room.maxPlayers) {
+      sendRoomError(socket, 'Комната уже заполнена.');
       return;
     }
 
-    if (player.roomId) {
-      leaveCurrentRoom(socket);
-    }
+    leaveRoom(socket);
 
-    if (Object.keys(room.players).length >= room.maxPlayers) {
-      socket.emit('room:error', {
-        message: 'Комната заполнена. Выбери другую.'
-      });
-      return;
-    }
+    room.players.add(socket.id);
 
-    player.roomId = roomId;
+    player.roomId = code;
+    player.ready = false;
     player.x = 0;
-    player.y = 0;
-    player.z = 0;
-    player.rotation = 0;
-    player.animation = 'idle';
+    player.y = 1.7;
+    player.z = 14;
 
-    room.players[socket.id] = player;
-    socket.join(roomId);
+    socket.join(code);
 
-    socket.emit('room:joined', {
-      roomId,
-      name: room.name,
-      mode: room.mode,
-      players: getRoomPlayers(room)
+    socket.emit('room:joined', roomState(room));
+
+    socket.to(code).emit('player:joined', publicPlayer(player));
+
+    io.to(code).emit('chat:system', {
+      text: player.name + ' присоединился к комнате.'
     });
 
-    socket.to(roomId).emit('player:joined', getPublicPlayer(player));
-
-    socket.to(roomId).emit('chat:system', {
-      text: `${player.nickname} присоединился к комнате.`,
-      time: Date.now()
+    io.to(code).emit('game:waiting', {
+      message: 'Оба игрока должны нажать «Готов», чтобы начать.'
     });
 
-    const count = Object.keys(room.players).length;
+    sendRoom(room);
+  });
 
-    if (room.mode === 'solo') {
-      // ОДИН ИГРОК: СТАРТУЕМ СРАЗУ, БЕЗ 10-СЕКУНДНОГО ОЖИДАНИЯ.
-      startRoom(roomId);
-    } else if (count < 2) {
-      // ПЕРВЫЙ ИГРОК: ЖДЁМ НАПАРНИКА.
-      socket.emit('game:waiting', {
-        roomId,
-        message: 'Ожидаем второго игрока...'
-      });
-    } else {
-      // ВТОРОЙ ИГРОК: ОБЩИЙ ОТСЧЁТ 3 СЕКУНДЫ.
-      beginCoopCountdown(roomId);
+  socket.on('room:ready', data => {
+    const room = player.roomId && rooms.get(player.roomId);
+
+    if (!room || room.started) return;
+
+    player.ready = Boolean(data?.ready);
+
+    sendRoom(room);
+
+    if (
+      room.mode === 'coop' &&
+      room.players.size === 2 &&
+      [...room.players].every(id => players.get(id)?.ready)
+    ) {
+      startRoom(room, socket);
     }
+  });
 
-    sendRoomState(roomId);
+  socket.on('room:timeScale', data => {
+    const room = player.roomId && rooms.get(player.roomId);
+
+    if (!room || room.started || room.ownerId !== socket.id) return;
+
+    const scale = Number(data?.timeScale);
+
+    if (!TIME_OPTIONS.includes(scale)) return;
+
+    room.timeScale = scale;
+    sendRoom(room);
   });
 
   socket.on('room:leave', () => {
-    leaveCurrentRoom(socket);
+    leaveRoom(socket);
   });
 
-  socket.on('player:move', (data = {}) => {
+  socket.on('player:move', data => {
     if (!player.roomId) return;
 
-    const room = gameRooms[player.roomId];
+    const room = rooms.get(player.roomId);
     if (!room) return;
 
-    const numberOr = (value, fallback = 0) => {
-      const number = Number(value);
-      return Number.isFinite(number) ? number : fallback;
-    };
+    const numberOr = (value, fallback) =>
+      Number.isFinite(Number(value))
+        ? Number(value)
+        : fallback;
 
-    player.x = Math.max(-500, Math.min(500, numberOr(data.x, player.x)));
-    player.y = Math.max(-10, Math.min(100, numberOr(data.y, player.y)));
-    player.z = Math.max(-500, Math.min(500, numberOr(data.z, player.z)));
-    player.rotation = numberOr(data.rotation, player.rotation);
+    player.x = Math.max(
+      -500,
+      Math.min(500, numberOr(data?.x, player.x))
+    );
 
-    const allowedAnimations = ['idle', 'walk', 'run', 'jump'];
+    player.y = Math.max(
+      -10,
+      Math.min(100, numberOr(data?.y, player.y))
+    );
 
-    player.animation = allowedAnimations.includes(data.animation)
-      ? data.animation
-      : 'idle';
+    player.z = Math.max(
+      -500,
+      Math.min(500, numberOr(data?.z, player.z))
+    );
 
-    socket.to(player.roomId).volatile.emit('player:moved', {
-      id: player.id,
-      name: player.nickname,
-      nickname: player.nickname,
-      x: player.x,
-      y: player.y,
-      z: player.z,
-      rotation: player.rotation,
-      animation: player.animation
-    });
+    player.rotation = numberOr(
+      data?.rotation,
+      player.rotation
+    );
+
+    socket.to(room.code).volatile.emit(
+      'player:moved',
+      publicPlayer(player)
+    );
   });
 
-  socket.on('player:stats', (data = {}) => {
+  socket.on('player:stats', data => {
     if (!player.roomId) return;
 
-    if (Number.isFinite(Number(data.health))) {
-      player.health = Math.max(0, Math.min(100, Number(data.health)));
-    }
+    player.health = Math.max(
+      0,
+      Math.min(100, Number(data?.health) || 0)
+    );
 
     socket.to(player.roomId).emit('player:stats:updated', {
       id: player.id,
@@ -460,68 +481,99 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Сервер подтверждает подбор, чтобы один предмет не достался дважды.
+  socket.on('loot:collect', data => {
+    const room = player.roomId && rooms.get(player.roomId);
+
+    if (!room || !room.started) return;
+
+    const id = clean(data?.id, 40);
+    const loot = room.loot.find(item => item.id === id);
+
+    if (!loot || room.collected.has(id)) {
+      socket.emit('loot:rejected', { id });
+      return;
+    }
+
+    const dx = player.x - loot.x;
+    const dz = player.z - loot.z;
+
+    if (Math.hypot(dx, dz) > 5.5) {
+      socket.emit('loot:rejected', { id });
+      return;
+    }
+
+    room.collected.add(id);
+
+    io.to(room.code).emit('loot:collected', {
+      id,
+      playerId: player.id,
+      name: player.name,
+      itemId: loot.itemId,
+      amount: loot.amount
+    });
+  });
+
   function handleChat(data = {}) {
-    const messageText = cleanText(
+    const message = clean(
       data.message || data.text,
-      MAX_CHAT_LENGTH
+      MAX_CHAT
     );
 
-    if (!messageText) return;
+    if (!message) return;
 
-    const message = {
-      id: `${socket.id}-${Date.now()}`,
+    const payload = {
+      id: socket.id + '-' + Date.now(),
       idPlayer: socket.id,
-      name: player.nickname,
-      nickname: player.nickname,
-      message: messageText,
-      text: messageText,
+      name: player.name,
+      nickname: player.name,
+      message,
+      text: message,
       time: Date.now(),
       roomId: player.roomId
     };
 
     if (player.roomId) {
-      io.to(player.roomId).emit('chat:message', message);
+      io.to(player.roomId).emit('chat:message', payload);
     } else {
-      io.emit('chat:lobby', message);
+      io.emit('chat:lobby', payload);
     }
   }
 
-  // Поддерживаем оба варианта названия события чата.
   socket.on('chat:message', handleChat);
   socket.on('chat:send', handleChat);
 
-  socket.on('game:event', (data = {}) => {
+  socket.on('game:event', data => {
     if (!player.roomId) return;
 
-    const type = data.type;
-    const allowedTypes = [
-      'item:collected',
+    const allowed = [
       'item:used',
       'furniture:placed',
-      'day:changed',
-      'player:ready'
+      'day:changed'
     ];
 
-    if (!allowedTypes.includes(type)) return;
+    if (!allowed.includes(data?.type)) return;
 
     io.to(player.roomId).emit('game:event', {
-      type,
-      playerId: socket.id,
-      nickname: player.nickname,
+      type: data.type,
+      playerId: player.id,
+      nickname: player.name,
       payload: data.payload || data.data || {},
       time: Date.now()
     });
   });
 
   socket.on('disconnect', () => {
-    leaveCurrentRoom(socket);
-    connectedPlayers.delete(socket.id);
+    leaveRoom(socket);
+    players.delete(socket.id);
 
     io.emit('online:count', io.engine.clientsCount);
-    io.emit('lobby:rooms', getLobbyState());
+    io.emit('lobby:rooms', getRooms());
   });
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`THE LOCKED HOME is running on port ${PORT}`);
+  console.log(
+    'THE LOCKED HOME: 30 DAYS running on port ' + PORT
+  );
 });
