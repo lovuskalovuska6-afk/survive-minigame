@@ -269,7 +269,9 @@ remotePlayers.set(data.id, remote);
 }
 
 remote.targetX = Number(data.x) || 0;
-remote.targetY = Number(data.y) || 0;
+// Сервер передаёт высоту камеры игрока (1.7),
+// а модель другого игрока должна стоять на земле.
+remote.targetY = 0;
 remote.targetZ = Number(data.z) || 0;
 
 remote.group.rotation.y = Number(data.rotation) || 0;
