@@ -1981,15 +1981,18 @@ function addChatMessage(name, message) {
 }
 
 function sendPlayerPosition() {
-  if (!socket?.connected || !player) return;
+const mp = window.lockedHomeMultiplayer;
+const activeSocket = mp?.socket || socket;
 
-  socket.emit('player:move', {
-    x: player.position.x,
-    y: player.position.y,
-    z: player.position.z,
-    rotation: yaw,
-    name: state.playerName
-  });
+if (!activeSocket?.connected || !player) return;
+
+activeSocket.emit('player:move', {
+x: player.position.x,
+y: player.position.y,
+z: player.position.z,
+rotation: yaw,
+name: state.playerName
+});
 }
 
 /* ---------------- Игровой цикл ---------------- */
