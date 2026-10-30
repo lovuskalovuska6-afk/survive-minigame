@@ -2094,12 +2094,28 @@ name: state.playerName
 
 let networkTimer = 0;
 
+
 function animate() {
   requestAnimationFrame(animate);
 
   if (!renderer || !scene || !camera) return;
 
   const delta = Math.min(clock.getDelta(), 0.05);
+
+  // Подключаем мультиплеер, когда он становится доступен
+  setupRemotePlayers();
+
+  // Плавное перемещение других игроков
+  for (const remote of remotePlayers.values()) {
+    remote.group.position.x +=
+      (remote.targetX - remote.group.position.x) * Math.min(1, delta * 10);
+
+    remote.group.position.y +=
+      (remote.targetY - remote.group.position.y) * Math.min(1, delta * 10);
+
+    remote.group.position.z +=
+      (remote.targetZ - remote.group.position.z) * Math.min(1, delta * 10);
+  }
 
   if (running && !paused && !gameOver) {
     updateMovement(delta);
@@ -2114,6 +2130,7 @@ function animate() {
     }
 
     networkTimer += delta;
+
     if (networkTimer >= 0.1) {
       networkTimer = 0;
       sendPlayerPosition();
