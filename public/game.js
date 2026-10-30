@@ -179,6 +179,101 @@ const worldObjects = [];
 const interactables = [];
 const droppedItems = [];
 const remotePlayers = new Map();
+let multiplayerHandlersReady = false;
+
+function setupRemotePlayers() {
+const mp = window.lockedHomeMultiplayer;
+if (!mp?.socket || multiplayerHandlersReady) return;
+
+const multiplayerSocket = mp.socket;
+multiplayerHandlersReady = true;
+
+multiplayerSocket.on('room:state', (room) => {
+const players = Array.isArray(room)
+? room
+: room?.players || room?.room?.players || [];
+
+const ownId = multiplayerSocket.id;
+
+for (const data of players) {
+  if (!data?.id || data.id === ownId) continue;
+  updateRemotePlayer(data);
+}
+
+const ids = new Set(
+  players
+    .filter(data => data?.id && data.id !== ownId)
+    .map(data => data.id)
+);
+
+for (const [id, remote] of remotePlayers) {
+  if (!ids.has(id)) {
+    scene?.remove(remote.group);
+    remotePlayers.delete(id);
+  }
+}
+
+});
+
+multiplayerSocket.on('player:joined', (data) => {
+if (data?.id && data.id !== multiplayerSocket.id) {
+updateRemotePlayer(data);
+}
+});
+
+multiplayerSocket.on('player:moved', (data) => {
+if (data?.id && data.id !== multiplayerSocket.id) {
+updateRemotePlayer(data);
+}
+});
+
+multiplayerSocket.on('player:left', (data) => {
+const id = typeof data === 'string' ? data : data?.id;
+const remote = remotePlayers.get(id);
+
+if (remote) {
+  scene?.remove(remote.group);
+  remotePlayers.delete(id);
+}
+
+});
+}
+
+function updateRemotePlayer(data) {
+if (!scene || !data?.id) return;
+
+let remote = remotePlayers.get(data.id);
+
+if (!remote) {
+const group = new THREE.Group();
+
+const body = new THREE.Mesh(
+  new THREE.CapsuleGeometry(0.35, 0.8, 4, 8),
+  new THREE.MeshStandardMaterial({ color: 0x3987ff })
+);
+body.position.y = 0.8;
+group.add(body);
+
+const head = new THREE.Mesh(
+  new THREE.SphereGeometry(0.25, 12, 10),
+  new THREE.MeshStandardMaterial({ color: 0xffd0a0 })
+);
+head.position.y = 1.55;
+group.add(head);
+
+scene.add(group);
+
+remote = { group, targetX: 0, targetY: 0, targetZ: 0 };
+remotePlayers.set(data.id, remote);
+
+}
+
+remote.targetX = Number(data.x) || 0;
+remote.targetY = Number(data.y) || 0;
+remote.targetZ = Number(data.z) || 0;
+
+remote.group.rotation.y = Number(data.rotation) || 0;
+}
 const inventory = [];
 const craftingRecipes = [
   {
